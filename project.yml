@@ -1,0 +1,22 @@
+name: VibeMouse
+options:
+  bundleIdPrefix: com.haoqi.vibemouse
+  deploymentTarget:
+    macOS: "15.0"
+targets:
+  VibeMouse:
+    type: application
+    platform: macOS
+    sources:
+      - VibeMouse
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.haoqi.vibemouse
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: "" # To be filled by user in Xcode
+    info:
+      path: VibeMouse/Info.plist
+      properties:
+        LSUIElement: true # Menu bar app
+        NSHumanReadableCopyright: "Copyright © 2026 Atlas. All rights reserved."
