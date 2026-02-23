@@ -50,7 +50,10 @@ class HIDDriver: ObservableObject {
     
     private func setupHIDManager() {
         manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
-        let deviceMatch: [[String: Any]] = [[kIOHIDVendorIDKey: 0x046D]]
+        let deviceMatch: [[String: Any]] = [
+            [kIOHIDVendorIDKey: 0x046D], // Logitech
+            [kIOHIDVendorIDKey: 0x373B]  // ATK / VGN
+        ]
         IOHIDManagerSetDeviceMatchingMultiple(manager!, deviceMatch as CFArray)
         
         let context = UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
@@ -78,7 +81,7 @@ class HIDDriver: ObservableObject {
         // Detect connection type from transport string
         let connType: ConnectionType
         let transportLower = transport.lowercased()
-        if transportLower.contains("bluetooth") || transportLower == "bluetoothlowenergy" || transportLower == "btle" {
+        if transportLower.contains("bluetooth") || transportLower.contains("nearlink") || transportLower == "bluetoothlowenergy" || transportLower == "btle" {
             connType = .bluetooth
             deviceIndex = 0xFF
         } else if transportLower == "usb" {
@@ -113,10 +116,10 @@ class HIDDriver: ObservableObject {
             }
         }
         
-        // HID++ capable interface detection:
-        // 1. Vendor-specific UsagePage >= 0xFF00 (USB/Unifying receiver)
-        // 2. Standard HID with MaxOutput >= 20 (BLE devices expose HID++ on standard interface)
-        let isHIDPPCapable = (usagePage >= 0xFF00 && maxOutput >= 7) || (maxOutput >= 20)
+        // HID++ capable interface detection (Only for Logitech 0x046D)
+        let vendorId = IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? Int ?? 0
+        let isLogitech = vendorId == 0x046D
+        let isHIDPPCapable = isLogitech && ((usagePage >= 0xFF00 && maxOutput >= 7) || (maxOutput >= 20))
         if isHIDPPCapable && activeDevice == nil {
             activeDevice = device
             
