@@ -106,7 +106,7 @@ struct MouseVisualization: View {
             let h = geometry.size.height
             
             ZStack {
-                if mouseType == "G Pro Wireless" {
+                if mouseType == "G Pro Wireless" || mouseType.contains("ATK") {
                     GProWirelessModel(w: w, h: h, activeCID: $activeCID, selectedButton: $selectedButton, eventManager: eventManager)
                 } else if mouseType == "M720 Triathlon" {
                     M720Model(w: w, h: h, activeCID: $activeCID, selectedButton: $selectedButton, eventManager: eventManager)

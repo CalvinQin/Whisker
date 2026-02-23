@@ -30,6 +30,20 @@ struct ContentView: View {
             }
         }
         .frame(width: 340, height: 580)
+        .onChange(of: driver.deviceName) { newName in
+            let lower = newName.lowercased()
+            if lower.contains("atk") || lower.contains("dragonfly") {
+                selectedMouse = "ATK Dragonfly A9"
+            } else if lower.contains("m720") {
+                selectedMouse = "M720 Triathlon"
+            }
+        }
+        .onAppear {
+            let lower = driver.deviceName.lowercased()
+            if lower.contains("atk") || lower.contains("dragonfly") {
+                selectedMouse = "ATK Dragonfly A9"
+            }
+        }
         .animation(.easeInOut(duration: 0.25), value: eventManager.hasAccessibilityPermission)
         .sheet(isPresented: $showingSettings) {
             SettingsView(profileManager: profileManager, appLanguage: $appLanguage)
@@ -44,6 +58,11 @@ struct ContentView: View {
         guard driver.isConnected else { return false }
         let deviceLower = driver.deviceName.lowercased()
         let selectedLower = selectedMouse.lowercased()
+        
+        if deviceLower.contains("atk") || deviceLower.contains("dragonfly") {
+            return selectedLower.contains("atk") || selectedLower.contains("dragonfly")
+        }
+        
         if selectedLower.contains("m720") && deviceLower.contains("m720") { return true }
         if selectedLower.contains("g pro") && deviceLower.contains("g pro") { return true }
         return deviceLower.contains(selectedLower) || selectedLower.contains(deviceLower)
@@ -147,6 +166,7 @@ struct ContentView: View {
                 Menu {
                     Button("G Pro Wireless") { selectedMouse = "G Pro Wireless" }
                     Button("M720 Triathlon") { selectedMouse = "M720 Triathlon" }
+                    Button("ATK Dragonfly A9") { selectedMouse = "ATK Dragonfly A9" }
                 } label: {
                     HStack(spacing: 4) {
                         Text(selectedMouse)
