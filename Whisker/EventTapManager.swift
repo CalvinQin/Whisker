@@ -210,7 +210,7 @@ class EventTapManager: ObservableObject {
         let eventMask = buttonMask | moveMask
 
         let callback: CGEventTapCallBack = { proxy, type, event, refcon in
-            guard let refcon = refcon else { return Unmanaged.passRetained(event) }
+            guard let refcon = refcon else { return Unmanaged.passUnretained(event) }
             let manager = Unmanaged<EventTapManager>.fromOpaque(refcon).takeUnretainedValue()
             return manager.handleEvent(proxy: proxy, type: type, event: event)
         }
@@ -278,7 +278,7 @@ class EventTapManager: ObservableObject {
         
         
         if type == .keyDown || type == .keyUp {
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
@@ -291,7 +291,7 @@ class EventTapManager: ObservableObject {
         guard let mouseButton = MouseButton(rawValue: Int(buttonNumber)),
               let action = buttonMappings[mouseButton],
               action != mouseButton.defaultAction else {
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
         // At this point we are INTERCEPTING a button. 
@@ -364,7 +364,7 @@ class EventTapManager: ObservableObject {
         guard let newEvent = CGEvent(mouseEventSource: source, mouseType: eventType, mouseCursorPosition: location, mouseButton: button) else {
             return nil
         }
-        return Unmanaged.passRetained(newEvent)
+        return Unmanaged.passUnretained(newEvent)
     }
 
     private func synthesizeOtherClick(buttonNumber: Int64, isDown: Bool, location: CGPoint) -> Unmanaged<CGEvent>? {
@@ -374,7 +374,7 @@ class EventTapManager: ObservableObject {
             return nil
         }
         newEvent.setIntegerValueField(.mouseEventButtonNumber, value: buttonNumber)
-        return Unmanaged.passRetained(newEvent)
+        return Unmanaged.passUnretained(newEvent)
     }
 
     private func synthesizeKeyPressAsync(key: CGKeyCode, flags: CGEventFlags, isDown: Bool, location: CGPoint) {
@@ -423,7 +423,7 @@ class EventTapManager: ObservableObject {
     
     private func handleScrollEvent(event: CGEvent) -> Unmanaged<CGEvent>? {
         guard smoothScrollEnabled else {
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
         
         // Get the discrete scroll delta (line-based)
@@ -442,10 +442,10 @@ class EventTapManager: ObservableObject {
         event.setIntegerValueField(.scrollWheelEventFixedPtDeltaAxis1, value: deltaY * smoothMultiplier * 65536 / 10)
         event.setIntegerValueField(.scrollWheelEventFixedPtDeltaAxis2, value: deltaX * smoothMultiplier * 65536 / 10)
         
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
     private func handleMouseMoveEvent(event: CGEvent) -> Unmanaged<CGEvent>? {
-        return Unmanaged.passRetained(event)
+        return Unmanaged.passUnretained(event)
     }
 
     deinit {
