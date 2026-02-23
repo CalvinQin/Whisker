@@ -1,22 +1,22 @@
-name: VibeMouse
+name: Whisker
 options:
-  bundleIdPrefix: com.haoqi.vibemouse
+  bundleIdPrefix: com.haoqi.whisker
   deploymentTarget:
     macOS: "15.0"
 targets:
-  VibeMouse:
+  Whisker:
     type: application
     platform: macOS
     sources:
-      - VibeMouse
+      - Whisker
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.haoqi.vibemouse
+        PRODUCT_BUNDLE_IDENTIFIER: com.haoqi.whisker
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: "" # To be filled by user in Xcode
     info:
-      path: VibeMouse/Info.plist
+      path: Whisker/Info.plist
       properties:
         LSUIElement: true # Menu bar app
         NSHumanReadableCopyright: "Copyright © 2026 Atlas. All rights reserved."

@@ -1,0 +1,78 @@
+"appName" = "Whisker";
+"noHardware" = "No hardware detected";
+"notConnected" = "Not connected";
+"grantPermissions" = "Grant Permissions";
+"settings" = "Settings";
+"profiles" = "Profiles";
+"newProfile" = "New Profile";
+"name" = "Name";
+"done" = "Done";
+"buttonCustomization" = "Button Customization";
+"defaultProfile" = "Default";
+"configureButton" = "Configure %@";
+"currentAction" = "Current Action: %@";
+"clickToConfig" = "Click a button on the visual model to set shortcuts";
+"dpiSensitivity" = "DPI Sensitivity";
+"overnightBuild" = "Overnight Build 02.23";
+"saveSync" = "Save & Sync";
+
+"Primary Click" = "Primary Click";
+"Secondary Click" = "Secondary Click";
+"Middle Click" = "Middle Click";
+"Back" = "Back";
+"Forward" = "Forward";
+"Mission Control" = "Mission Control";
+"App Exposé" = "App Exposé";
+"Launchpad" = "Launchpad";
+"Show Desktop" = "Show Desktop";
+"Scroll Up" = "Scroll Up";
+"Scroll Down" = "Scroll Down";
+"Disabled" = "Disabled";
+
+"Left Click" = "Left Click";
+"Right Click" = "Right Click";
+"Side Button 1" = "Side Button 1";
+"Side Button 2" = "Side Button 2";
+"Gesture Button" = "Gesture Button";
+
+"pressAnyKey" = "Press Any Key Combinations...";
+"stopRecording" = "Stop Recording";
+"recordShortcut" = "Record Shortcut";
+"customShortcut" = "Custom Shortcut";
+"accessibilityWarning" = "Permission Error: Delete Whisker from System Settings -> Privacy -> Accessibility completely (using the '-' button), then re-add it manually. Xcode rebuilds revoke the binary signature.";
+"Move Left a Space" = "Move Left a Space";
+"Move Right a Space" = "Move Right a Space";
+"Toggle Dark Mode" = "Toggle Dark Mode";
+
+// Onboarding
+"welcomeTitle" = "Welcome to Whisker";
+"welcomeSubtitle" = "To enable advanced mouse mapping and system-wide shortcuts, Whisker requires Accessibility permissions.";
+"onboardingStep1" = "Click the button below to open System Settings.";
+"onboardingStep2" = "Navigate to Privacy & Security -> Accessibility.";
+"onboardingStep3" = "Enable the toggle switch for Whisker.";
+"onboardingStepInput" = "Grant Input Monitoring for battery & HID features.";
+"inputMonitoringBtn" = "Input Monitoring";
+"onboardingStep4" = "If it is already enabled but not working, select Whisker, click the '-' button to remove it, and then manually add it back.";
+"openSettingsBtn" = "Open Accessibility Settings";
+"checkPermissionBtn" = "Check Permission Again";
+
+"Copy" = "Copy";
+"Paste" = "Paste";
+"Cut" = "Cut";
+"Undo" = "Undo";
+"Redo" = "Redo";
+"savedSuccess" = "Saved ✓";
+
+"useProfile" = "Use";
+"name" = "Name";
+"profiles" = "Profiles";
+"done" = "Done";
+
+"smoothScrolling" = "Smooth Scrolling";
+"mouseEnhancement" = "Mouse Enhancement";
+"manageProfiles" = "Manage Profiles";
+"on" = "On";
+"off" = "Off";
+"connectionUSB" = "USB";
+"connectionReceiver" = "Receiver";
+"connectionBluetooth" = "Bluetooth";

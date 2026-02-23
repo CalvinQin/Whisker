@@ -1,0 +1,78 @@
+"appName" = "Whisker";
+"noHardware" = "未检测到硬件";
+"notConnected" = "未连接";
+"grantPermissions" = "授权辅助功能";
+"settings" = "设置";
+"profiles" = "配置";
+"newProfile" = "新配置";
+"name" = "名称";
+"done" = "完成";
+"buttonCustomization" = "按键自定义";
+"defaultProfile" = "默认配置";
+"configureButton" = "设置 %@";
+"currentAction" = "当前操作: %@";
+"clickToConfig" = "点击左侧鼠标模型上的按键进行设置快捷键";
+"dpiSensitivity" = "DPI 灵敏度";
+"overnightBuild" = "熬夜版 02.23";
+"saveSync" = "保存并同步";
+
+"Primary Click" = "左键单击";
+"Secondary Click" = "右键单击";
+"Middle Click" = "中键单击";
+"Back" = "返回 (后退)";
+"Forward" = "前进";
+"Mission Control" = "调度中心";
+"App Exposé" = "App Exposé";
+"Launchpad" = "启动台";
+"Show Desktop" = "显示桌面";
+"Scroll Up" = "向上滚动";
+"Scroll Down" = "向下滚动";
+"Disabled" = "禁用";
+
+"Left Click" = "左键";
+"Right Click" = "右键";
+"Side Button 1" = "侧键 1";
+"Side Button 2" = "侧键 2";
+"Gesture Button" = "手势按键";
+
+"pressAnyKey" = "请按下任意组合键...";
+"stopRecording" = "停止录制";
+"recordShortcut" = "录制快捷键";
+"customShortcut" = "自定义快捷键";
+"accessibilityWarning" = "权限失效：请打开 系统设置 -> 隐私与安全性 -> 辅助功能，选中 Whisker 点击减号 (-) 彻底删除，然后重新添加。因为每次 Xcode 重新编译会导致 macOS 收回新版本 App 的权限。";
+"Move Left a Space" = "切换到左边空间";
+"Move Right a Space" = "切换到右边空间";
+"Toggle Dark Mode" = "切换深色模式";
+
+// Onboarding
+"welcomeTitle" = "欢迎使用 Whisker";
+"welcomeSubtitle" = "为了支持高级按键映射与全局快捷键，Whisker 必须获得系统的辅助功能权限。";
+"onboardingStep1" = "点击下方按钮以打开系统设置。";
+"onboardingStep2" = "进入 隐私与安全性 -> 辅助功能。";
+"onboardingStep3" = "打开右侧的 Whisker 开关。";
+"onboardingStepInput" = "授权输入监控以获取电量和设备信息。";
+"inputMonitoringBtn" = "输入监控";
+"onboardingStep4" = "如果开关已开启但依然无效（常见于重新编译后）：请选中 Whisker，点击下方的“-”减号将其彻底删除，然后再手工加回来。";
+"openSettingsBtn" = "前往授权";
+"checkPermissionBtn" = "我已授权，重新检查";
+
+"Copy" = "复制";
+"Paste" = "粘贴";
+"Cut" = "剪切";
+"Undo" = "撤销";
+"Redo" = "重做";
+"savedSuccess" = "已保存 ✓";
+
+"useProfile" = "使用";
+"name" = "名称";
+"profiles" = "配置方案";
+"done" = "完成";
+
+"smoothScrolling" = "丝滑滚动";
+"mouseEnhancement" = "鼠标增强";
+"manageProfiles" = "管理配置方案";
+"on" = "开";
+"off" = "关";
+"connectionUSB" = "USB 直连";
+"connectionReceiver" = "接收器";
+"connectionBluetooth" = "蓝牙";
