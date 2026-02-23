@@ -38,10 +38,20 @@ class HIDDriver: ObservableObject {
     @Published var deviceName: String = "No Device"
     @Published var connectionType: ConnectionType = .unknown
     
+    // UI can set this to prioritize which device to show status for
+    var targetDeviceName: String = "" {
+        didSet {
+            updatePrimaryDevice()
+        }
+    }
+    
+    // Store all connected devices
+    private var allDevices: [String: (IOHIDDevice, ConnectionType)] = [:]
+    
     private var activeDevice: IOHIDDevice?
     private var featureIndices: [UInt16: UInt8] = [:]
     private var deviceIndex: UInt8 = 0xFF
-    private var pendingDiscovery: [UInt16] = [] // Track which features we're discovering
+    private var pendingDiscovery: [UInt16] = []
     
     init() {
         debugLog("=== HIDDriver init ===")
@@ -107,14 +117,8 @@ class HIDDriver: ObservableObject {
         
         debugLog("Connection type: \(connType.rawValue) deviceIndex=0x\(String(format:"%02X",deviceIndex))")
         
-        // Update connection info
-        if !isConnected {
-            DispatchQueue.main.async {
-                self.isConnected = true
-                self.deviceName = name
-                self.connectionType = connType
-            }
-        }
+        allDevices[name] = (device, connType)
+        updatePrimaryDevice()
         
         // HID++ capable interface detection (Only for Logitech 0x046D)
         let vendorId = IOHIDDeviceGetProperty(device, kIOHIDVendorIDKey as CFString) as? Int ?? 0
@@ -144,16 +148,47 @@ class HIDDriver: ObservableObject {
     }
     
     private func handleDeviceDisconnected(_ device: IOHIDDevice) {
+        if let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String {
+            allDevices.removeValue(forKey: name)
+        }
+        
         if activeDevice == device {
             activeDevice = nil
             featureIndices.removeAll()
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            guard let self = self, self.activeDevice == nil else { return }
-            self.isConnected = false
-            self.deviceName = "No Device"
-            self.connectionType = .unknown
-            self.batteryLevel = 0
+        updatePrimaryDevice()
+    }
+    
+    private func updatePrimaryDevice() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            // Try to find target device first
+            var bestMatch: (name: String, device: IOHIDDevice, type: ConnectionType)? = nil
+            
+            if !self.targetDeviceName.isEmpty {
+                if let match = self.allDevices.first(where: { $0.key.lowercased().contains(self.targetDeviceName.lowercased()) }) {
+                    bestMatch = (match.key, match.value.0, match.value.1)
+                } else if let match = self.allDevices.first(where: { self.targetDeviceName.lowercased().contains($0.key.lowercased()) }) {
+                    bestMatch = (match.key, match.value.0, match.value.1)
+                }
+            }
+            
+            // Fallback to any device
+            if bestMatch == nil, let first = self.allDevices.first {
+                bestMatch = (first.key, first.value.0, first.value.1)
+            }
+            
+            if let best = bestMatch {
+                self.isConnected = true
+                self.deviceName = best.name
+                self.connectionType = best.type
+            } else {
+                self.isConnected = false
+                self.deviceName = "No Device"
+                self.connectionType = .unknown
+                self.batteryLevel = 0
+            }
         }
     }
     

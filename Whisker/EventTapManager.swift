@@ -2,6 +2,19 @@ import Foundation
 import CoreGraphics
 import AppKit
 
+private func debugLog(_ msg: String) {
+    let line = "[\(Date())] \(msg)\n"
+    let path = NSHomeDirectory() + "/Desktop/whisker_hid.log"
+    if let handle = FileHandle(forWritingAtPath: path) {
+        handle.seekToEndOfFile()
+        handle.write(line.data(using: .utf8)!)
+        handle.closeFile()
+    } else {
+        FileManager.default.createFile(atPath: path, contents: line.data(using: .utf8))
+    }
+}
+
+
 enum MouseAction: Hashable, Codable, Equatable, Identifiable {
     case original(String)
     case missionControl
@@ -183,7 +196,9 @@ class EventTapManager: ObservableObject {
             (1 << CGEventType.rightMouseDown.rawValue) |
             (1 << CGEventType.rightMouseUp.rawValue) |
             (1 << CGEventType.otherMouseDown.rawValue) |
-            (1 << CGEventType.otherMouseUp.rawValue)
+            (1 << CGEventType.otherMouseUp.rawValue) |
+            (1 << CGEventType.keyDown.rawValue) |
+            (1 << CGEventType.keyUp.rawValue)
         )
         let moveMask: CGEventMask = (
             (1 << CGEventType.scrollWheel.rawValue) |
@@ -260,8 +275,19 @@ class EventTapManager: ObservableObject {
         if type == .mouseMoved || type == .leftMouseDragged || type == .rightMouseDragged || type == .otherMouseDragged {
             return handleMouseMoveEvent(event: event)
         }
+        
+        if type == .keyDown || type == .keyUp {
+            let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+            if type == .keyDown {
+                debugLog("TAP: Keyboard event KeyCode=\(keyCode)")
+            }
+            return Unmanaged.passRetained(event)
+        }
 
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
+        if type == .otherMouseDown || type == .leftMouseDown || type == .rightMouseDown {
+            debugLog("TAP: Mouse Button Down, ButtonNumber=\(buttonNumber)")
+        }
 
         guard let mouseButton = MouseButton(rawValue: Int(buttonNumber)),
               let action = buttonMappings[mouseButton],
