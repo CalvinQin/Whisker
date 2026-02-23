@@ -76,3 +76,6 @@
 "connectionUSB" = "USB";
 "connectionReceiver" = "Receiver";
 "connectionBluetooth" = "Bluetooth";
+
+"launchAtLogin" = "Launch at Login";
+"hideDockIcon" = "Hide Dock Icon (Menu Bar Only)";

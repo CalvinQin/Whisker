@@ -1,95 +1,130 @@
 import SwiftUI
 
-struct MouseClickRegion: View {
-    let points: [CGPoint]
-    let c1s: [CGPoint?]
-    let c2s: [CGPoint?]
-    var isClosed: Bool = false
-    
-    var body: some View {
-        Path { path in
-            if points.isEmpty { return }
-            path.move(to: points[0])
-            for i in 1..<points.count {
-                if let c1 = c1s[i], let c2 = c2s[i] {
-                    path.addCurve(to: points[i], control1: c1, control2: c2)
-                } else if let c1 = c1s[i] {
-                    path.addQuadCurve(to: points[i], control: c1)
-                } else {
-                    path.addLine(to: points[i])
-                }
-            }
-            if isClosed {
-                path.closeSubpath()
-            }
-        }
-        .fill(Color.clear)
-        .contentShape(
-            Path { path in
-                if points.isEmpty { return }
-                path.move(to: points[0])
-                for i in 1..<points.count {
-                    if let c1 = c1s[i], let c2 = c2s[i] {
-                        path.addCurve(to: points[i], control1: c1, control2: c2)
-                    } else if let c1 = c1s[i] {
-                        path.addQuadCurve(to: points[i], control: c1)
-                    } else {
-                        path.addLine(to: points[i])
-                    }
-                }
-                if isClosed {
-                    path.closeSubpath()
-                }
-            }
-        )
-        .overlay(
-            Path { path in
-                if points.isEmpty { return }
-                path.move(to: points[0])
-                for i in 1..<points.count {
-                    if let c1 = c1s[i], let c2 = c2s[i] {
-                        path.addCurve(to: points[i], control1: c1, control2: c2)
-                    } else if let c1 = c1s[i] {
-                        path.addQuadCurve(to: points[i], control: c1)
-                    } else {
-                        path.addLine(to: points[i])
-                    }
-                }
-                if isClosed {
-                    path.closeSubpath()
-                }
-            }
-            .stroke(Color.primary.opacity(0.15), lineWidth: 1.5)
-        )
-    }
-}
-
-struct ButtonBadge: View {
-    let label: String
+struct MouseCallout: View {
     let button: MouseButton
-    let position: CGPoint
-    @Binding var selectedButton: MouseButton?
+    let initialTarget: CGPoint
+    let initialCallout: CGPoint
     @ObservedObject var eventManager: EventTapManager
     
+    @State private var showingRecorder = false
+    @State private var targetPoint: CGPoint = .zero
+    @State private var calloutPoint: CGPoint = .zero
+    @State private var parentSize: CGSize = .zero
+    
+    var currentActionText: String {
+        return eventManager.buttonMappings[button]?.rawValue ?? button.defaultAction.rawValue
+    }
+    
     var body: some View {
-        Button(action: {
-            selectedButton = button
-        }) {
-            Text(label)
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
-                .frame(width: 24, height: 24)
-                .background(selectedButton == button ? Color.blue : Color.orange)
-                .clipShape(Circle())
-                .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+        ZStack {
+            // Connecting Line
+            Path { path in
+                path.move(to: calloutPoint)
+                // Add a small horizontal elbow
+                let elbowX = calloutPoint.x + (targetPoint.x > calloutPoint.x ? 20 : -20)
+                path.addLine(to: CGPoint(x: elbowX, y: calloutPoint.y))
+                path.addLine(to: targetPoint)
+            }
+            .stroke(Color.primary.opacity(0.3), style: StrokeStyle(lineWidth: 1.5, dash: [4]))
+            
+            // Target Dot
+            Circle()
+                .fill(Color.orange)
+                .frame(width: 8, height: 8)
+                .position(targetPoint)
+                .shadow(radius: 2)
+            
+            // Callout Menu
+            Menu {
+                // Same logic as MappingMenu
+                Section("Basic Clicks") {
+                    actionButton(for: .original("Primary Click"))
+                    actionButton(for: .original("Secondary Click"))
+                    actionButton(for: .original("Middle Click"))
+                }
+                Section("Navigation") {
+                    actionButton(for: .original("Back"))
+                    actionButton(for: .original("Forward"))
+                    actionButton(for: .scrollUp)
+                    actionButton(for: .scrollDown)
+                }
+                Section("OS Controls") {
+                    actionButton(for: .missionControl)
+                    actionButton(for: .appExpose)
+                    actionButton(for: .showDesktop)
+                    actionButton(for: .launchpad)
+                }
+                Section("Shortcuts") {
+                    actionButton(for: .copy)
+                    actionButton(for: .paste)
+                    Button("Custom Shortcut...") {
+                        showingRecorder = true
+                    }
+                }
+                Section {
+                    actionButton(for: .none)
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    Text(String(localized: LocalizedStringResource(stringLiteral: button.label)))
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.secondary)
+                    Text(String(localized: LocalizedStringResource(stringLiteral: currentActionText)))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.primary)
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 8))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(6)
+                .shadow(color: Color.black.opacity(0.1), radius: 2, y: 1)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.1), lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+            .position(calloutPoint)
+            .sheet(isPresented: $showingRecorder) {
+                VStack {
+                    Text("Press Shortcut for \(String(localized: LocalizedStringResource(stringLiteral: button.label)))")
+                        .padding()
+                    KeyboardRecorder(isRecording: $showingRecorder) { code, flags in
+                        eventManager.buttonMappings[button] = .customShortcut(key: code, flags: flags)
+                        showingRecorder = false
+                    }
+                    Button("Cancel") { showingRecorder = false }
+                        .padding()
+                }
+                .frame(width: 300, height: 200)
+            }
         }
-        .buttonStyle(.plain)
-        .position(position)
-        .popover(isPresented: Binding(
-            get: { selectedButton == button },
-            set: { if !$0 { selectedButton = nil } }
-        ), arrowEdge: .trailing) {
-            MappingMenu(button: button, eventManager: eventManager)
+        .background(
+            GeometryReader { geo in
+                Color.clear.onAppear {
+                    parentSize = geo.size
+                    targetPoint = initialTarget
+                    calloutPoint = initialCallout
+                }
+                .onChange(of: geo.size) { newSize in
+                    parentSize = newSize
+                    targetPoint = initialTarget
+                    calloutPoint = initialCallout
+                }
+            }
+        )
+    }
+    
+    @ViewBuilder
+    func actionButton(for action: MouseAction) -> some View {
+        Button {
+            eventManager.buttonMappings[button] = action
+        } label: {
+            if eventManager.buttonMappings[button] == action {
+                Text("✓ " + String(localized: LocalizedStringResource(stringLiteral: action.rawValue)))
+            } else {
+                Text(String(localized: LocalizedStringResource(stringLiteral: action.rawValue)))
+            }
         }
     }
 }
@@ -106,185 +141,75 @@ struct MouseVisualization: View {
             let h = geometry.size.height
             
             ZStack {
-                if mouseType == "G Pro Wireless" || mouseType.contains("ATK") {
-                    GProWirelessModel(w: w, h: h, activeCID: $activeCID, selectedButton: $selectedButton, eventManager: eventManager)
+                if mouseType == "G Pro Wireless" || mouseType.isEmpty {
+                    gProView(w: w, h: h)
                 } else if mouseType == "M720 Triathlon" {
-                    M720Model(w: w, h: h, activeCID: $activeCID, selectedButton: $selectedButton, eventManager: eventManager)
+                    m720View(w: w, h: h)
+                } else if mouseType == "ATK Dragonfly A9" {
+                    atkView(w: w, h: h)
                 } else {
-                    GProWirelessModel(w: w, h: h, activeCID: $activeCID, selectedButton: $selectedButton, eventManager: eventManager)
+                    gProView(w: w, h: h)
                 }
             }
         }
-        .frame(width: 200, height: 300)
+        .frame(minWidth: 320, minHeight: 380)
     }
-}
-
-// MARK: - G Pro Wireless (Symmetric, Ambidextrous)
-struct GProWirelessModel: View {
-    let w: CGFloat
-    let h: CGFloat
-    @Binding var activeCID: UInt16?
-    @Binding var selectedButton: MouseButton?
-    @ObservedObject var eventManager: EventTapManager
     
-    var body: some View {
-        ZStack {
-            // Main Chassis
-            Path { path in
-                path.move(to: CGPoint(x: w*0.3, y: h*0.1))
-                path.addCurve(to: CGPoint(x: w*0.5, y: h*0.05), control1: CGPoint(x: w*0.35, y: h*0.05), control2: CGPoint(x: w*0.45, y: h*0.05))
-                path.addCurve(to: CGPoint(x: w*0.7, y: h*0.1), control1: CGPoint(x: w*0.55, y: h*0.05), control2: CGPoint(x: w*0.65, y: h*0.05))
-                path.addCurve(to: CGPoint(x: w*0.85, y: h*0.5), control1: CGPoint(x: w*0.8, y: h*0.2), control2: CGPoint(x: w*0.88, y: h*0.3))
-                path.addCurve(to: CGPoint(x: w*0.75, y: h*0.9), control1: CGPoint(x: w*0.82, y: h*0.7), control2: CGPoint(x: w*0.8, y: h*0.85))
-                path.addCurve(to: CGPoint(x: w*0.25, y: h*0.9), control1: CGPoint(x: w*0.6, y: h*0.98), control2: CGPoint(x: w*0.4, y: h*0.98))
-                path.addCurve(to: CGPoint(x: w*0.15, y: h*0.5), control1: CGPoint(x: w*0.2, y: h*0.85), control2: CGPoint(x: w*0.12, y: h*0.7))
-                path.addCurve(to: CGPoint(x: w*0.3, y: h*0.1), control1: CGPoint(x: w*0.12, y: h*0.3), control2: CGPoint(x: w*0.2, y: h*0.2))
-            }
-            .stroke(Color.primary.opacity(0.8), lineWidth: 2)
-            
-            // Separation line for palm
-            Path { path in
-                path.move(to: CGPoint(x: w*0.2, y: h*0.55))
-                path.addCurve(to: CGPoint(x: w*0.8, y: h*0.55), control1: CGPoint(x: w*0.4, y: h*0.5), control2: CGPoint(x: w*0.6, y: h*0.5))
-            }
-            .stroke(Color.primary.opacity(0.2), lineWidth: 1)
-            
-            // Left Click
-            MouseClickRegion(
-                points: [CGPoint(x: w*0.3, y: h*0.1), CGPoint(x: w*0.48, y: h*0.06), CGPoint(x: w*0.48, y: h*0.35), CGPoint(x: w*0.18, y: h*0.35)],
-                c1s: [CGPoint(x: w*0.35, y: h*0.05), nil, CGPoint(x: w*0.35, y: h*0.38), CGPoint(x: w*0.15, y: h*0.25)],
-                c2s: [CGPoint(x: w*0.45, y: h*0.05), nil, CGPoint(x: w*0.2, y: h*0.38), CGPoint(x: w*0.2, y: h*0.15)]
-            )
-            
-            // Right Click
-            MouseClickRegion(
-                points: [CGPoint(x: w*0.7, y: h*0.1), CGPoint(x: w*0.52, y: h*0.06), CGPoint(x: w*0.52, y: h*0.35), CGPoint(x: w*0.82, y: h*0.35)],
-                c1s: [CGPoint(x: w*0.65, y: h*0.05), nil, CGPoint(x: w*0.65, y: h*0.38), CGPoint(x: w*0.85, y: h*0.25)],
-                c2s: [CGPoint(x: w*0.55, y: h*0.05), nil, CGPoint(x: w*0.8, y: h*0.38), CGPoint(x: w*0.8, y: h*0.15)]
-            )
-            
-            // Middle Click / Scroll Wheel
-            Capsule()
-                .fill(Color.clear)
-                .frame(width: w*0.08, height: h*0.15)
-                .position(x: w*0.5, y: h*0.2)
-                .contentShape(Capsule())
-                .overlay(Capsule().stroke(Color.primary.opacity(0.15), lineWidth: 1.5))
-
-            // Side Buttons
-            MouseClickRegion(
-                points: [CGPoint(x: w*0.15, y: h*0.4), CGPoint(x: w*0.13, y: h*0.42), CGPoint(x: w*0.11, y: h*0.48), CGPoint(x: w*0.13, y: h*0.5)],
-                c1s: [nil, nil, nil, nil], c2s: [nil, nil, nil, nil],
-                isClosed: true
-            )
-            
-            MouseClickRegion(
-                points: [CGPoint(x: w*0.13, y: h*0.52), CGPoint(x: w*0.11, y: h*0.54), CGPoint(x: w*0.09, y: h*0.62), CGPoint(x: w*0.12, y: h*0.64)],
-                c1s: [nil, nil, nil, nil], c2s: [nil, nil, nil, nil],
-                isClosed: true
-            )
-            
-            // Interactive Badges
-            ButtonBadge(label: "L", button: .left, position: CGPoint(x: w*0.35, y: h*0.2), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "R", button: .right, position: CGPoint(x: w*0.65, y: h*0.2), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "M", button: .middle, position: CGPoint(x: w*0.5, y: h*0.2), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "S2", button: .side2, position: CGPoint(x: w*0.05, y: h*0.42), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "S1", button: .side1, position: CGPoint(x: w*0.03, y: h*0.58), selectedButton: $selectedButton, eventManager: eventManager)
-        }
+    @ViewBuilder
+    func gProView(w: CGFloat, h: CGFloat) -> some View {
+        Image("gpw")
+            .resizable()
+            .scaledToFit()
+            .frame(width: w * 0.65)
+            .position(x: w / 2, y: h / 2)
+            .shadow(color: Color.black.opacity(0.6), radius: 25, x: 0, y: 15)
+            .opacity(0.95)
+        
+        MouseCallout(button: .left, initialTarget: CGPoint(x: w*0.41, y: h*0.39), initialCallout: CGPoint(x: w*0.20, y: h*0.24), eventManager: eventManager)
+        MouseCallout(button: .right, initialTarget: CGPoint(x: w*0.59, y: h*0.39), initialCallout: CGPoint(x: w*0.78, y: h*0.24), eventManager: eventManager)
+        MouseCallout(button: .middle, initialTarget: CGPoint(x: w*0.50, y: h*0.35), initialCallout: CGPoint(x: w*0.50, y: h*0.12), eventManager: eventManager)
+        
+        MouseCallout(button: .side2, initialTarget: CGPoint(x: w*0.35, y: h*0.44), initialCallout: CGPoint(x: w*0.13, y: h*0.46), eventManager: eventManager)
+        MouseCallout(button: .side1, initialTarget: CGPoint(x: w*0.35, y: h*0.53), initialCallout: CGPoint(x: w*0.13, y: h*0.57), eventManager: eventManager)
+        
+        MouseCallout(button: .side4, initialTarget: CGPoint(x: w*0.65, y: h*0.45), initialCallout: CGPoint(x: w*0.85, y: h*0.46), eventManager: eventManager)
+        MouseCallout(button: .side3, initialTarget: CGPoint(x: w*0.64, y: h*0.54), initialCallout: CGPoint(x: w*0.85, y: h*0.57), eventManager: eventManager)
     }
-}
-// Append to MouseVisualization.swift
 
-// MARK: - M720 Triathlon (Ergonomic Right-Handed)
-struct M720Model: View {
-    let w: CGFloat
-    let h: CGFloat
-    @Binding var activeCID: UInt16?
-    @Binding var selectedButton: MouseButton?
-    @ObservedObject var eventManager: EventTapManager
-    
-    var body: some View {
-        ZStack {
-            // Main Chassis (Asymmetrical, bulkier left side for thumb rest)
-            Path { path in
-                // Start top middle
-                path.move(to: CGPoint(x: w*0.4, y: h*0.05))
-                path.addCurve(to: CGPoint(x: w*0.75, y: h*0.1), control1: CGPoint(x: w*0.5, y: h*0.02), control2: CGPoint(x: w*0.65, y: h*0.05))
-                path.addCurve(to: CGPoint(x: w*0.9, y: h*0.5), control1: CGPoint(x: w*0.85, y: h*0.2), control2: CGPoint(x: w*0.95, y: h*0.35))
-                path.addCurve(to: CGPoint(x: w*0.75, y: h*0.95), control1: CGPoint(x: w*0.85, y: h*0.75), control2: CGPoint(x: w*0.8, y: h*0.9))
-                path.addCurve(to: CGPoint(x: w*0.15, y: h*0.85), control1: CGPoint(x: w*0.6, y: h*1.0), control2: CGPoint(x: w*0.3, y: h*0.95))
-                // Thumb rest wing out
-                path.addCurve(to: CGPoint(x: w*0.05, y: h*0.55), control1: CGPoint(x: w*0.05, y: h*0.75), control2: CGPoint(x: w*0.02, y: h*0.65))
-                // Curve back in to top
-                path.addCurve(to: CGPoint(x: w*0.25, y: h*0.2), control1: CGPoint(x: w*0.1, y: h*0.4), control2: CGPoint(x: w*0.15, y: h*0.3))
-                path.addCurve(to: CGPoint(x: w*0.4, y: h*0.05), control1: CGPoint(x: w*0.3, y: h*0.1), control2: CGPoint(x: w*0.35, y: h*0.08))
-            }
-            .stroke(Color.primary.opacity(0.8), lineWidth: 2)
+    @ViewBuilder
+    func m720View(w: CGFloat, h: CGFloat) -> some View {
+        Image("m720")
+            .resizable()
+            .scaledToFit()
+            .frame(width: w * 0.70) // Normalize for new transparent PNG
+            .position(x: w / 2, y: h / 2)
+            .shadow(color: Color.black.opacity(0.6), radius: 25, x: 0, y: 15)
+            .opacity(0.95)
+        
+        MouseCallout(button: .left, initialTarget: CGPoint(x: w*0.35, y: h*0.40), initialCallout: CGPoint(x: w*0.14, y: h*0.29), eventManager: eventManager)
+        MouseCallout(button: .right, initialTarget: CGPoint(x: w*0.51, y: h*0.36), initialCallout: CGPoint(x: w*0.78, y: h*0.35), eventManager: eventManager)
+        MouseCallout(button: .middle, initialTarget: CGPoint(x: w*0.38, y: h*0.36), initialCallout: CGPoint(x: w*0.50, y: h*0.25), eventManager: eventManager)
+        
+        MouseCallout(button: .side2, initialTarget: CGPoint(x: w*0.32, y: h*0.46), initialCallout: CGPoint(x: w*0.15, y: h*0.47), eventManager: eventManager)
+        MouseCallout(button: .side1, initialTarget: CGPoint(x: w*0.37, y: h*0.48), initialCallout: CGPoint(x: w*0.15, y: h*0.59), eventManager: eventManager)
+        MouseCallout(button: .gesture, initialTarget: CGPoint(x: w*0.40, y: h*0.61), initialCallout: CGPoint(x: w*0.22, y: h*0.72), eventManager: eventManager)
+    }
 
-            // Left Click (Shaped for asymmetrical top)
-            MouseClickRegion(
-                points: [CGPoint(x: w*0.4, y: h*0.05), CGPoint(x: w*0.5, y: h*0.04), CGPoint(x: w*0.45, y: h*0.35), CGPoint(x: w*0.25, y: h*0.2)],
-                c1s: [CGPoint(x: w*0.45, y: h*0.02), nil, CGPoint(x: w*0.3, y: h*0.3), CGPoint(x: w*0.3, y: h*0.1)],
-                c2s: [CGPoint(x: w*0.48, y: h*0.03), nil, CGPoint(x: w*0.25, y: h*0.25), CGPoint(x: w*0.35, y: h*0.08)]
-            )
-            
-            // Right Click
-            MouseClickRegion(
-                points: [CGPoint(x: w*0.75, y: h*0.1), CGPoint(x: w*0.55, y: h*0.05), CGPoint(x: w*0.5, y: h*0.35), CGPoint(x: w*0.88, y: h*0.4)],
-                c1s: [CGPoint(x: w*0.65, y: h*0.05), nil, CGPoint(x: w*0.65, y: h*0.4), CGPoint(x: w*0.85, y: h*0.2)],
-                c2s: [CGPoint(x: w*0.6, y: h*0.05), nil, CGPoint(x: w*0.8, y: h*0.4), CGPoint(x: w*0.8, y: h*0.15)]
-            )
-            
-            // Middle Click / Scroll Wheel
-            Capsule()
-                .fill(Color.clear)
-                .frame(width: w*0.08, height: h*0.15)
-                .position(x: w*0.48, y: h*0.2)
-                .contentShape(Capsule())
-                .overlay(Capsule().stroke(Color.primary.opacity(0.15), lineWidth: 1.5))
-
-            // Side Buttons (M720 has 3 on the side)
-            // Forward
-            MouseClickRegion(
-                points: [CGPoint(x: w*0.15, y: h*0.35), CGPoint(x: w*0.13, y: h*0.37), CGPoint(x: w*0.1, y: h*0.45), CGPoint(x: w*0.12, y: h*0.47)],
-                c1s: [nil, nil, nil, nil], c2s: [nil, nil, nil, nil],
-                isClosed: true
-            )
-            
-            // Back
-            MouseClickRegion(
-                points: [CGPoint(x: w*0.1, y: h*0.48), CGPoint(x: w*0.08, y: h*0.5), CGPoint(x: w*0.08, y: h*0.58), CGPoint(x: w*0.1, y: h*0.6)],
-                c1s: [nil, nil, nil, nil], c2s: [nil, nil, nil, nil],
-                isClosed: true
-            )
-            
-            // Gesture Button (Bottom edge of thumb rest)
-            Path { path in
-                path.addEllipse(in: CGRect(x: w*0.08, y: h*0.75, width: w*0.15, height: h*0.06))
-            }
-            .fill(Color.clear)
-            .contentShape(Ellipse())
-            .overlay(
-                Path { path in
-                    path.addEllipse(in: CGRect(x: w*0.08, y: h*0.75, width: w*0.15, height: h*0.06))
-                }
-                .stroke(Color.primary.opacity(0.15), lineWidth: 1.5)
-            )
-            
-            // Thumb Rest Ridge lines
-            Path { path in
-                path.move(to: CGPoint(x: w*0.22, y: h*0.65))
-                path.addCurve(to: CGPoint(x: w*0.3, y: h*0.8), control1: CGPoint(x: w*0.25, y: h*0.7), control2: CGPoint(x: w*0.28, y: h*0.75))
-            }
-            .stroke(Color.primary.opacity(0.2), lineWidth: 1)
-            
-            // Interactive Badges
-            ButtonBadge(label: "L", button: .left, position: CGPoint(x: w*0.35, y: h*0.18), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "R", button: .right, position: CGPoint(x: w*0.65, y: h*0.2), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "M", button: .middle, position: CGPoint(x: w*0.48, y: h*0.2), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "S2", button: .side2, position: CGPoint(x: w*0.05, y: h*0.38), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "S1", button: .side1, position: CGPoint(x: w*0.02, y: h*0.52), selectedButton: $selectedButton, eventManager: eventManager)
-            ButtonBadge(label: "T", button: .gesture, position: CGPoint(x: w*0.15, y: h*0.78), selectedButton: $selectedButton, eventManager: eventManager)
-        }
+    @ViewBuilder
+    func atkView(w: CGFloat, h: CGFloat) -> some View {
+        Image("atk")
+            .resizable()
+            .scaledToFit()
+            .frame(width: w * 0.6) // Closer to GPW baseline
+            .position(x: w / 2, y: h / 2)
+            .shadow(color: Color.black.opacity(0.6), radius: 25, x: 0, y: 15)
+            .opacity(0.95)
+        
+        MouseCallout(button: .left, initialTarget: CGPoint(x: w*0.42, y: h*0.43), initialCallout: CGPoint(x: w*0.20, y: h*0.25), eventManager: eventManager)
+        MouseCallout(button: .right, initialTarget: CGPoint(x: w*0.58, y: h*0.43), initialCallout: CGPoint(x: w*0.75, y: h*0.26), eventManager: eventManager)
+        MouseCallout(button: .middle, initialTarget: CGPoint(x: w*0.50, y: h*0.36), initialCallout: CGPoint(x: w*0.45, y: h*0.13), eventManager: eventManager)
+        
+        MouseCallout(button: .side2, initialTarget: CGPoint(x: w*0.37, y: h*0.46), initialCallout: CGPoint(x: w*0.19, y: h*0.50), eventManager: eventManager)
+        MouseCallout(button: .side1, initialTarget: CGPoint(x: w*0.38, y: h*0.53), initialCallout: CGPoint(x: w*0.19, y: h*0.62), eventManager: eventManager)
     }
 }

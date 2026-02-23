@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 // MARK: - Main Content View
 
@@ -12,8 +13,11 @@ struct ContentView: View {
     @State private var showingSettings = false
     @State private var selectedButtonForMapping: MouseButton? = nil
     @State private var showSaveToast = false
+    @State private var showingInfo = false
     @State private var selectedTab: Int = 0
     @AppStorage("AppLanguage") private var appLanguage: String = "system"
+    @AppStorage("hideDockIcon") private var hideDockIcon: Bool = false
+    @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
     
     var body: some View {
         ZStack {
@@ -22,14 +26,12 @@ struct ContentView: View {
             
             if !eventManager.hasAccessibilityPermission {
                 OnboardingView(eventManager: eventManager)
-                    .transition(.opacity.combined(with: .scale))
-                    .zIndex(100)
             } else {
                 mainContent
                     .transition(.opacity)
             }
         }
-        .frame(width: 340, height: 580)
+        .frame(width: 460, height: 620)
         .onChange(of: driver.deviceName) { newName in
             let lower = newName.lowercased()
             if lower.contains("atk") || lower.contains("dragonfly") {
@@ -56,6 +58,30 @@ struct ContentView: View {
             let lower = driver.deviceName.lowercased()
             if lower.contains("atk") || lower.contains("dragonfly") {
                 selectedMouse = "ATK Dragonfly A9"
+            }
+            
+            // Sync status on appear
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        }
+        .onChange(of: launchAtLogin) { newValue in
+            do {
+                if newValue {
+                    try SMAppService.mainApp.register()
+                } else {
+                    try SMAppService.mainApp.unregister()
+                }
+            } catch {
+                print("Failed to update Launch at Login: \(error)")
+                // Revert state if failed
+                launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            }
+        }
+        .onChange(of: hideDockIcon) { newValue in
+            if newValue {
+                NSApp.setActivationPolicy(.accessory)
+            } else {
+                NSApp.setActivationPolicy(.regular)
+                NSApp.activate(ignoringOtherApps: true)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: eventManager.hasAccessibilityPermission)
@@ -99,8 +125,10 @@ struct ContentView: View {
             // ── Content Area ──
             if selectedTab == 0 {
                 mouseArea
+            } else if selectedTab == 1 {
+                settingsArea // which is actually the Profiles area currently
             } else {
-                settingsArea
+                systemSettingsArea
             }
         }
     }
@@ -111,6 +139,24 @@ struct ContentView: View {
         HStack {
             Text("Whisker")
                 .font(.system(size: 22, weight: .bold, design: .rounded))
+            
+            Button(action: { showingInfo.toggle() }) {
+                Image(systemName: "info.circle")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 14))
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showingInfo, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Supported Devices:")
+                        .font(.headline)
+                    Text("• Logitech G Pro Wireless")
+                    Text("• Logitech M720 Triathlon")
+                    Text("• ATK Dragonfly A9")
+                }
+                .padding()
+                .frame(width: 220)
+            }
             
             Spacer()
             
@@ -154,6 +200,7 @@ struct ContentView: View {
         HStack(spacing: 0) {
             tabButton(icon: "house.fill", index: 0)
             tabButton(icon: "square.grid.2x2", index: 1)
+            tabButton(icon: "gearshape.fill", index: 2)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
@@ -178,9 +225,29 @@ struct ContentView: View {
             // Mouse model
             HStack {
                 Menu {
-                    Button("G Pro Wireless") { selectedMouse = "G Pro Wireless" }
-                    Button("M720 Triathlon") { selectedMouse = "M720 Triathlon" }
-                    Button("ATK Dragonfly A9") { selectedMouse = "ATK Dragonfly A9" }
+                    Section("Connected Devices") {
+                        if driver.connectedDevices.isEmpty {
+                            Text("No Devices Connected")
+                        } else {
+                            ForEach(Array(driver.connectedDevices.keys).sorted(), id: \.self) { name in
+                                if let state = driver.connectedDevices[name] {
+                                    Button {
+                                        selectedMouse = name
+                                    } label: {
+                                        HStack {
+                                            Text(name)
+                                            Image(systemName: state.type.iconName)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Section("Preview Supported Models") {
+                        Button("G Pro Wireless Preview") { selectedMouse = "G Pro Wireless" }
+                        Button("M720 Triathlon Preview") { selectedMouse = "M720 Triathlon" }
+                        Button("ATK Dragonfly Preview") { selectedMouse = "ATK Dragonfly A9" }
+                    }
                 } label: {
                     HStack(spacing: 4) {
                         Text(selectedMouse)
@@ -196,13 +263,15 @@ struct ContentView: View {
                 Spacer()
                 
                 // Smooth scroll toggle
-                Toggle(isOn: $eventManager.smoothScrollEnabled) {
-                    Image(systemName: eventManager.smoothScrollEnabled ? "water.waves" : "line.3.horizontal")
-                        .font(.system(size: 12))
-                        .foregroundColor(eventManager.smoothScrollEnabled ? .blue : .secondary)
+                HStack(spacing: 6) {
+                    Text("smoothScrolling")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                    Toggle("", isOn: $eventManager.smoothScrollEnabled)
+                        .toggleStyle(.switch)
+                        .controlSize(.mini)
+                        .labelsHidden()
                 }
-                .toggleStyle(.switch)
-                .controlSize(.mini)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
@@ -250,15 +319,28 @@ struct ContentView: View {
         }
     }
     
-    // MARK: - Settings Area (Tab 1)
-    
     var settingsArea: some View {
         VStack(spacing: 12) {
+            // Header for Profiles
+            HStack {
+                Text("profiles")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Spacer()
+                Button(action: { showingSettings = true }) {
+                    Image(systemName: "slider.horizontal.3")
+                        .foregroundColor(.blue)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            
             // Profile selector
             ForEach(profileManager.profiles) { profile in
                 HStack {
                     Text(profile.name)
-                        .font(.system(size: 13))
+                        .font(.system(size: 13, weight: profile.id == profileManager.activeProfileID ? .bold : .regular))
                     Spacer()
                     if profile.id == profileManager.activeProfileID {
                         Image(systemName: "checkmark.circle.fill")
@@ -279,44 +361,70 @@ struct ContentView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 6)
+                .padding(.vertical, 10)
+                .background(profile.id == profileManager.activeProfileID ? Color.orange.opacity(0.1) : Color.clear)
+                .cornerRadius(6)
             }
             
-            Divider().padding(.horizontal, 16)
-            
-            // Language
-            HStack {
-                Text("Language")
-                    .font(.system(size: 13))
-                Spacer()
+            Spacer()
+        }
+        .padding(.top, 4)
+    }
+    
+    // MARK: - System Settings Area (Tab 2)
+    
+    var systemSettingsArea: some View {
+        VStack(spacing: 24) {
+            // Language Setting
+            VStack(alignment: .leading, spacing: 12) {
+                Text(String(localized: "Language"))
+                    .font(.headline)
+                    .foregroundColor(.secondary)
                 Picker("", selection: $appLanguage) {
                     Text("System").tag("system")
                     Text("EN").tag("en")
                     Text("中文").tag("zh-Hans")
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 160)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 16)
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(10)
             
-            Divider().padding(.horizontal, 16)
-            
-            // Manage profiles button
-            Button(action: { showingSettings = true }) {
+            // Startup & Launch Settings
+            VStack(alignment: .leading, spacing: 16) {
+                Text("System Behavior")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                    
                 HStack {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.system(size: 12))
-                    Text("manageProfiles")
-                        .font(.system(size: 12))
+                    Text(String(localized: "launchAtLogin"))
+                        .font(.system(size: 14))
+                    Spacer()
+                    Toggle("", isOn: $launchAtLogin)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
                 }
-                .foregroundColor(.orange)
+                
+                Divider()
+                
+                HStack {
+                    Text(String(localized: "hideDockIcon"))
+                        .font(.system(size: 14))
+                    Spacer()
+                    Toggle("", isOn: $hideDockIcon)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                }
             }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 16)
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(10)
             
             Spacer()
         }
-        .padding(.top, 12)
+        .padding(16)
     }
     
     // MARK: - Connection Dot

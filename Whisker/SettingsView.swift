@@ -75,23 +75,6 @@ struct SettingsView: View {
             
             Divider()
             
-            // Language
-            HStack {
-                Text("Language / 语言")
-                    .font(.callout)
-                Spacer()
-                Picker("", selection: $appLanguage) {
-                    Text("System").tag("system")
-                    Text("English").tag("en")
-                    Text("简体中文").tag("zh-Hans")
-                }
-                .pickerStyle(.segmented)
-                .frame(width: 220)
-            }
-            .padding()
-            
-            Divider()
-            
             Button("done") { dismiss() }
                 .padding()
         }

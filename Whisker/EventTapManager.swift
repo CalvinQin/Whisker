@@ -128,6 +128,8 @@ enum MouseButton: Int, Codable, CaseIterable, Identifiable {
     case side1 = 3
     case side2 = 4
     case gesture = 5
+    case side3 = 6
+    case side4 = 7
 
     var id: Int { rawValue }
 
@@ -138,6 +140,8 @@ enum MouseButton: Int, Codable, CaseIterable, Identifiable {
         case .middle: return "Middle Click"
         case .side1: return "Side Button 1"
         case .side2: return "Side Button 2"
+        case .side3: return "Side Button 3"
+        case .side4: return "Side Button 4"
         case .gesture: return "Gesture Button"
         }
     }
@@ -149,6 +153,8 @@ enum MouseButton: Int, Codable, CaseIterable, Identifiable {
         case .middle: return .original("Middle Click")
         case .side1: return .original("Back")
         case .side2: return .original("Forward")
+        case .side3: return .none
+        case .side4: return .none
         case .gesture: return .appExpose
         }
     }
@@ -196,9 +202,7 @@ class EventTapManager: ObservableObject {
             (1 << CGEventType.rightMouseDown.rawValue) |
             (1 << CGEventType.rightMouseUp.rawValue) |
             (1 << CGEventType.otherMouseDown.rawValue) |
-            (1 << CGEventType.otherMouseUp.rawValue) |
-            (1 << CGEventType.keyDown.rawValue) |
-            (1 << CGEventType.keyUp.rawValue)
+            (1 << CGEventType.otherMouseUp.rawValue)
         )
         let moveMask: CGEventMask = (
             (1 << CGEventType.scrollWheel.rawValue) |
@@ -277,10 +281,6 @@ class EventTapManager: ObservableObject {
         }
         
         
-        if type == .keyDown || type == .keyUp {
-            return Unmanaged.passUnretained(event)
-        }
-
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)
         if type == .otherMouseDown || type == .leftMouseDown || type == .rightMouseDown {
             debugLog("TAP: Mouse Button Down, ButtonNumber=\(buttonNumber)")
@@ -296,6 +296,26 @@ class EventTapManager: ObservableObject {
 
         // At this point we are INTERCEPTING a button. 
         let isDown = (type == .otherMouseDown || type == .leftMouseDown || type == .rightMouseDown)
+        
+        if case .original(let name) = action {
+            if name == "Primary Click" {
+                event.type = isDown ? .leftMouseDown : .leftMouseUp
+                event.setIntegerValueField(.mouseEventButtonNumber, value: 0)
+            } else if name == "Secondary Click" {
+                event.type = isDown ? .rightMouseDown : .rightMouseUp
+                event.setIntegerValueField(.mouseEventButtonNumber, value: 1)
+            } else if name == "Middle Click" {
+                event.type = isDown ? .otherMouseDown : .otherMouseUp
+                event.setIntegerValueField(.mouseEventButtonNumber, value: 2)
+            } else if name == "Back" {
+                event.type = isDown ? .otherMouseDown : .otherMouseUp
+                event.setIntegerValueField(.mouseEventButtonNumber, value: 3)
+            } else if name == "Forward" {
+                event.type = isDown ? .otherMouseDown : .otherMouseUp
+                event.setIntegerValueField(.mouseEventButtonNumber, value: 4)
+            }
+            return Unmanaged.passUnretained(event)
+        }
         
         // Execute the custom action
         executeAction(action, isDown: isDown, event: event)
@@ -396,12 +416,31 @@ class EventTapManager: ObservableObject {
 
     private func performKeyboardShortcut(key: CGKeyCode, flags: CGEventFlags) {
         let source = CGEventSource(stateID: .hidSystemState)
-        if let keyDown = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true),
-           let keyUp = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) {
+        
+        // 1. Press modifiers
+        if let flagsDown = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) {
+            flagsDown.type = .flagsChanged
+            flagsDown.flags = flags
+            flagsDown.post(tap: .cgSessionEventTap)
+        }
+        
+        // 2. Press key
+        if let keyDown = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: true) {
             keyDown.flags = flags
-            keyUp.flags = flags
             keyDown.post(tap: .cgSessionEventTap)
+        }
+        
+        // 3. Release key
+        if let keyUp = CGEvent(keyboardEventSource: source, virtualKey: key, keyDown: false) {
+            keyUp.flags = flags
             keyUp.post(tap: .cgSessionEventTap)
+        }
+        
+        // 4. Release modifiers
+        if let flagsUp = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) {
+            flagsUp.type = .flagsChanged
+            flagsUp.flags = [] // Clear flags
+            flagsUp.post(tap: .cgSessionEventTap)
         }
     }
 

@@ -45,6 +45,11 @@ class HIDDriver: ObservableObject {
         }
     }
     
+    // Public getter for all connected devices to be used by UI menu
+    var connectedDevices: [String: DeviceState] {
+        return allDevices
+    }
+    
     // Store all connected devices with their individual states
     struct DeviceState {
         let device: IOHIDDevice
