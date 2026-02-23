@@ -278,28 +278,7 @@ class EventTapManager: ObservableObject {
         
         
         if type == .keyDown || type == .keyUp {
-            let isDown = (type == .keyDown)
-            let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
-            
-            // Check mapping for ATK/VGN generic side buttons (Left Arrow=123, Right Arrow=124)
-            var targetButton: MouseButton? = nil
-            if keyCode == 123 { targetButton = .side1 }
-            else if keyCode == 124 { targetButton = .side2 }
-            
-            if let mouseButton = targetButton,
-               let action = buttonMappings[mouseButton] {
-                
-                // If the user wants the exact default action (like Back/Forward), 
-                // we still need to let the system Arrow Keys pass? 
-                // Or better: ATK's default is already Back/Forward in many browsers.
-                // But if they remapped it to Mission Control, we intercept:
-                if action != mouseButton.defaultAction {
-                    debugLog("Intercepted ATK Side Button keyCode = \(keyCode) -> mapping: \(action.rawValue)")
-                    executeAction(action, isDown: isDown, event: event)
-                    return nil // Intercepted
-                }
-            }
-            return Unmanaged.passRetained(event) // Pass native keyboard event
+            return Unmanaged.passRetained(event)
         }
 
         let buttonNumber = event.getIntegerValueField(.mouseEventButtonNumber)

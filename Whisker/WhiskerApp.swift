@@ -12,16 +12,6 @@ struct WhiskerApp: App {
         WindowGroup {
             ContentView(driver: driver, eventManager: eventManager, profileManager: profileManager)
                 .onAppear {
-                    if let active = profileManager.activeProfile {
-                        for button in MouseButton.allCases {
-                            if let actionStr = active.mappings[button.rawValue],
-                               let action = MouseAction(rawValue: actionStr) {
-                                eventManager.buttonMappings[button] = action
-                            } else {
-                                eventManager.buttonMappings[button] = button.defaultAction
-                            }
-                        }
-                    }
                     eventManager.start()
                 }
         }
@@ -49,16 +39,9 @@ struct WhiskerApp: App {
                 Menu("Quick Profiles") {
                     ForEach(profileManager.profiles) { profile in
                         Button(action: {
-                            profileManager.activeProfileID = profile.id
-                            profileManager.save()
-                            for button in MouseButton.allCases {
-                                if let actionStr = profile.mappings[button.rawValue],
-                                   let action = MouseAction(rawValue: actionStr) {
-                                    eventManager.buttonMappings[button] = action
-                                } else {
-                                    eventManager.buttonMappings[button] = button.defaultAction
-                                }
-                            }
+                            let target = driver.targetDeviceName.isEmpty ? driver.deviceName : driver.targetDeviceName
+                            profileManager.deviceProfiles[target] = profile.id
+                            profileManager.applyProfile(for: target, eventManager: eventManager)
                         }) {
                             HStack {
                                 Text(profile.name)

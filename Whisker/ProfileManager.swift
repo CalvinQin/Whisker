@@ -25,12 +25,16 @@ struct MouseProfile: Codable, Identifiable {
 class ProfileManager: ObservableObject {
     @Published var profiles: [MouseProfile] = []
     @Published var activeProfileID: UUID?
+    @Published var deviceProfiles: [String: UUID] = [:]
     
     private let savePath: URL
+    private let deviceProfilesPath: URL
     
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        savePath = appSupport.appendingPathComponent("Whisker").appendingPathComponent("profiles.json")
+        let whiskerDir = appSupport.appendingPathComponent("Whisker")
+        savePath = whiskerDir.appendingPathComponent("profiles.json")
+        deviceProfilesPath = whiskerDir.appendingPathComponent("deviceProfiles.json")
         
         load()
         
@@ -44,25 +48,55 @@ class ProfileManager: ObservableObject {
     func save() {
         do {
             let data = try JSONEncoder().encode(profiles)
+            let deviceData = try JSONEncoder().encode(deviceProfiles)
             try FileManager.default.createDirectory(at: savePath.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: savePath)
+            try deviceData.write(to: deviceProfilesPath)
         } catch {
             print("Failed to save profiles: \(error)")
         }
     }
     
     func load() {
-        guard FileManager.default.fileExists(atPath: savePath.path) else { return }
-        do {
-            let data = try Data(contentsOf: savePath)
-            profiles = try JSONDecoder().decode([MouseProfile].self, from: data)
-            activeProfileID = profiles.first?.id
-        } catch {
-            print("Failed to load profiles: \(error)")
+        if FileManager.default.fileExists(atPath: savePath.path) {
+            do {
+                let data = try Data(contentsOf: savePath)
+                profiles = try JSONDecoder().decode([MouseProfile].self, from: data)
+                activeProfileID = profiles.first?.id
+            } catch {
+                print("Failed to load profiles: \(error)")
+            }
+        }
+        
+        if FileManager.default.fileExists(atPath: deviceProfilesPath.path) {
+            do {
+                let data = try Data(contentsOf: deviceProfilesPath)
+                deviceProfiles = try JSONDecoder().decode([String: UUID].self, from: data)
+            } catch {
+                print("Failed to load device profiles: \(error)")
+            }
         }
     }
     
     var activeProfile: MouseProfile? {
         profiles.first { $0.id == activeProfileID }
+    }
+    
+    func applyProfile(for deviceName: String, eventManager: EventTapManager) {
+        let profileId = deviceProfiles[deviceName] ?? profiles.first?.id
+        activeProfileID = profileId
+        deviceProfiles[deviceName] = profileId
+        save()
+        
+        if let active = activeProfile {
+            for button in MouseButton.allCases {
+                 if let actionStr = active.mappings[button.rawValue],
+                    let action = MouseAction(rawValue: actionStr) {
+                     eventManager.buttonMappings[button] = action
+                 } else {
+                     eventManager.buttonMappings[button] = button.defaultAction
+                 }
+            }
+        }
     }
 }

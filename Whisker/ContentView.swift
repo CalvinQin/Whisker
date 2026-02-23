@@ -44,6 +44,7 @@ struct ContentView: View {
             } else {
                 driver.targetDeviceName = newSelection
             }
+            profileManager.applyProfile(for: newSelection, eventManager: eventManager)
         }
         .onAppear {
             if selectedMouse.contains("ATK") {
@@ -51,6 +52,7 @@ struct ContentView: View {
             } else {
                 driver.targetDeviceName = selectedMouse
             }
+            profileManager.applyProfile(for: selectedMouse, eventManager: eventManager)
             let lower = driver.deviceName.lowercased()
             if lower.contains("atk") || lower.contains("dragonfly") {
                 selectedMouse = "ATK Dragonfly A9"
@@ -265,7 +267,9 @@ struct ContentView: View {
                     } else {
                         Button(action: {
                             profileManager.activeProfileID = profile.id
+                            profileManager.deviceProfiles[selectedMouse] = profile.id
                             profileManager.save()
+                            profileManager.applyProfile(for: selectedMouse, eventManager: eventManager)
                         }) {
                             Text("useProfile")
                                 .font(.system(size: 11))
@@ -361,6 +365,7 @@ struct ContentView: View {
             }
             profileManager.profiles[index].mappings = newMappings
         }
+        profileManager.deviceProfiles[selectedMouse] = profileManager.activeProfileID
         profileManager.save()
         driver.requestBatteryStatus()
         

@@ -45,8 +45,13 @@ class HIDDriver: ObservableObject {
         }
     }
     
-    // Store all connected devices
-    private var allDevices: [String: (IOHIDDevice, ConnectionType)] = [:]
+    // Store all connected devices with their individual states
+    struct DeviceState {
+        let device: IOHIDDevice
+        let type: ConnectionType
+        var batteryLevel: Int = 0
+    }
+    private var allDevices: [String: DeviceState] = [:]
     
     private var activeDevice: IOHIDDevice?
     private var featureIndices: [UInt16: UInt8] = [:]
@@ -117,7 +122,7 @@ class HIDDriver: ObservableObject {
         
         debugLog("Connection type: \(connType.rawValue) deviceIndex=0x\(String(format:"%02X",deviceIndex))")
         
-        allDevices[name] = (device, connType)
+        allDevices[name] = DeviceState(device: device, type: connType, batteryLevel: 0)
         updatePrimaryDevice()
         
         // HID++ capable interface detection (Only for Logitech 0x046D)
@@ -164,25 +169,26 @@ class HIDDriver: ObservableObject {
             guard let self = self else { return }
             
             // Try to find target device first
-            var bestMatch: (name: String, device: IOHIDDevice, type: ConnectionType)? = nil
+            var bestMatch: (name: String, state: DeviceState)? = nil
             
             if !self.targetDeviceName.isEmpty {
                 if let match = self.allDevices.first(where: { $0.key.lowercased().contains(self.targetDeviceName.lowercased()) }) {
-                    bestMatch = (match.key, match.value.0, match.value.1)
+                    bestMatch = (match.key, match.value)
                 } else if let match = self.allDevices.first(where: { self.targetDeviceName.lowercased().contains($0.key.lowercased()) }) {
-                    bestMatch = (match.key, match.value.0, match.value.1)
+                    bestMatch = (match.key, match.value)
                 }
             }
             
             // Fallback to any device
             if bestMatch == nil, let first = self.allDevices.first {
-                bestMatch = (first.key, first.value.0, first.value.1)
+                bestMatch = (first.key, first.value)
             }
             
             if let best = bestMatch {
                 self.isConnected = true
                 self.deviceName = best.name
-                self.connectionType = best.type
+                self.connectionType = best.state.type
+                self.batteryLevel = best.state.batteryLevel
             } else {
                 self.isConnected = false
                 self.deviceName = "No Device"
@@ -278,7 +284,14 @@ class HIDDriver: ObservableObject {
         if let bIdx = featureIndices[HIDPPFeature.batteryLevel.rawValue], rFeatureIdx == bIdx {
             let level = Int(data[4])
             debugLog("🔋 Battery (0x1000): \(level)%")
-            DispatchQueue.main.async { if level > 0 { self.batteryLevel = level } }
+            DispatchQueue.main.async {
+                if level > 0 {
+                    if let device = self.activeDevice, let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String {
+                        self.allDevices[name]?.batteryLevel = level
+                    }
+                    self.updatePrimaryDevice()
+                }
+            }
             return
         }
         
@@ -288,7 +301,12 @@ class HIDDriver: ObservableObject {
             let qual = data[5]
             let level = soc > 0 ? soc : ([1:5, 3:25, 5:60, 7:100][qual] ?? 50)
             debugLog("🔋 Battery (0x1001): \(level)%")
-            DispatchQueue.main.async { self.batteryLevel = level }
+            DispatchQueue.main.async {
+                if let device = self.activeDevice, let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String {
+                    self.allDevices[name]?.batteryLevel = level
+                }
+                self.updatePrimaryDevice()
+            }
             return
         }
         
