@@ -39,10 +39,18 @@ struct ContentView: View {
             }
         }
         .onChange(of: selectedMouse) { newSelection in
-            driver.targetDeviceName = newSelection
+            if newSelection.contains("ATK") {
+                driver.targetDeviceName = "atk"
+            } else {
+                driver.targetDeviceName = newSelection
+            }
         }
         .onAppear {
-            driver.targetDeviceName = selectedMouse
+            if selectedMouse.contains("ATK") {
+                driver.targetDeviceName = "atk"
+            } else {
+                driver.targetDeviceName = selectedMouse
+            }
             let lower = driver.deviceName.lowercased()
             if lower.contains("atk") || lower.contains("dragonfly") {
                 selectedMouse = "ATK Dragonfly A9"
