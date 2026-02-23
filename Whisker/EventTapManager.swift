@@ -307,15 +307,21 @@ class EventTapManager: ObservableObject {
             debugLog("TAP: Mouse Button Down, ButtonNumber=\(buttonNumber)")
         }
 
+        // Guard to ignore events if the user set it to its "original" mapping,
+        // so we don't accidentally swallow them and synthesize left clicks.
         guard let mouseButton = MouseButton(rawValue: Int(buttonNumber)),
               let action = buttonMappings[mouseButton],
               action != mouseButton.defaultAction else {
             return Unmanaged.passRetained(event)
         }
 
+        // At this point we are INTERCEPTING a button. 
         let isDown = (type == .otherMouseDown || type == .leftMouseDown || type == .rightMouseDown)
         
+        // Execute the custom action
         executeAction(action, isDown: isDown, event: event)
+        
+        // Swallow the original hardware button event 
         return nil
     }
     
@@ -325,20 +331,15 @@ class EventTapManager: ObservableObject {
             break
         case .missionControl:
             if isDown { DispatchQueue.global().async { self.launchApplication("Mission Control", isSystem: true) } }
-            return nil
         case .appExpose:
             // F10 is the universal standard for App Exposé in macOS if unmapped natively, or use shortcut
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x6D, flags: []) } } // F10
-            return nil
         case .launchpad:
             if isDown { DispatchQueue.global().async { self.launchApplication("Launchpad", isSystem: true) } }
-            return nil
         case .moveLeftSpace:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x7B, flags: [.maskControl]) } } // Ctrl+Left
-            return nil
         case .moveRightSpace:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x7C, flags: [.maskControl]) } } // Ctrl+Right
-            return nil
         case .toggleDarkMode:
             if isDown {
                 DispatchQueue.global().async {
@@ -349,35 +350,26 @@ class EventTapManager: ObservableObject {
                     }
                 }
             }
-            return nil
         case .showDesktop:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x67, flags: []) } } // F11
-            return nil
         case .copy:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x08, flags: [.maskCommand]) } } // ⌘C
-            return nil
         case .paste:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x09, flags: [.maskCommand]) } } // ⌘V
-            return nil
         case .cut:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x07, flags: [.maskCommand]) } } // ⌘X
-            return nil
         case .undo:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x06, flags: [.maskCommand]) } } // ⌘Z
-            return nil
         case .redo:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x06, flags: [.maskCommand, .maskShift]) } } // ⌘⇧Z
-            return nil
         case .customShortcut(let key, let flags):
             if isDown {
                 DispatchQueue.global().async {
                     self.performKeyboardShortcut(key: key, flags: CGEventFlags(rawValue: flags))
                 }
             }
-            return nil
         case .scrollUp:
             if isDown { DispatchQueue.global().async { self.synthesizeScroll(deltaY: 5) } }
-            return nil
         case .scrollDown:
             if isDown { DispatchQueue.global().async { self.synthesizeScroll(deltaY: -5) } }
         case .none:
