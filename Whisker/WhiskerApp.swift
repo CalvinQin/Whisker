@@ -66,6 +66,7 @@ struct WhiskerMenu: View {
         if lower.contains("atk") || lower.contains("dragonfly") { return "ATK Dragonfly A9" }
         if lower.contains("mx master") { return "Logitech MX Master" }
         if lower.contains("mx anywhere") { return "Logitech MX Anywhere" }
+        if lower.contains("receiver") || lower.contains("unifying") || lower.contains("bolt") { return "Logitech (\(Localizer.get("via Receiver")))" }
         return rawName
     }
     

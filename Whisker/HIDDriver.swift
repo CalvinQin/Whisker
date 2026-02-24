@@ -219,7 +219,7 @@ class HIDDriver: ObservableObject {
             
             if let best = bestMatch {
                 self.isConnected = true
-                self.deviceName = best.name
+                self.deviceName = best.state.name
                 self.connectionType = best.state.type
                 self.batteryLevel = best.state.batteryLevel
             } else {
