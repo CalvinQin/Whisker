@@ -23,6 +23,7 @@ enum LogitechCID: UInt16 {
 enum HIDPPFeature: UInt16 {
     case root = 0x0000
     case featureSet = 0x0001
+    case deviceNameType = 0x0005
     case batteryLevel = 0x1000
     case unifiedBattery = 0x1001
     case reprogControlsV4 = 0x1B04

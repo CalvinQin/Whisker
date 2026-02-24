@@ -55,10 +55,12 @@ class HIDDriver: ObservableObject {
         let device: IOHIDDevice
         let type: ConnectionType
         var batteryLevel: Int = 0
-        let name: String
+        var name: String
         let uniqueId: String
     }
     private var allDevices: [String: DeviceState] = [:]
+    // Track the uniqueId of the device whose HID++ interface we're using
+    private var activeDeviceUniqueId: String = ""
     
     private var activeDevice: IOHIDDevice?
     private var featureIndices: [UInt16: UInt8] = [:]
@@ -148,6 +150,7 @@ class HIDDriver: ObservableObject {
         let isHIDPPCapable = isLogitech && ((usagePage >= 0xFF00 && maxOutput >= 7) || (maxOutput >= 20))
         if isHIDPPCapable && activeDevice == nil {
             activeDevice = device
+            activeDeviceUniqueId = uniqueId
             
             // Open the vendor-specific interface
             let openRes = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
@@ -159,10 +162,14 @@ class HIDDriver: ObservableObject {
                 Unmanaged<HIDDriver>.fromOpaque(ctx!).takeUnretainedValue().processReport(reportId: reportId, report: report, length: len)
             }, UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque()))
             
+            // Discover device name first (especially important for receivers)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                self?.discoverFeature(.deviceNameType)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
                 self?.discoverFeature(.batteryLevel)
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.1) { [weak self] in
                 self?.discoverFeature(.unifiedBattery)
             }
 
@@ -184,6 +191,7 @@ class HIDDriver: ObservableObject {
         
         if activeDevice == device {
             activeDevice = nil
+            activeDeviceUniqueId = ""
             featureIndices.removeAll()
         }
         updatePrimaryDevice()
@@ -298,6 +306,10 @@ class HIDDriver: ObservableObject {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                         self?.requestBatteryStatus(featureID: requestedFeatureID)
                     }
+                } else if requestedFeatureID == HIDPPFeature.deviceNameType.rawValue {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                        self?.requestDeviceName()
+                    }
                 }
             } else {
                 debugLog("❌ Feature 0x\(String(format:"%04X",requestedFeatureID)) not supported (index=0)")
@@ -343,6 +355,28 @@ class HIDDriver: ObservableObject {
             return
         }
         
+        // Device Name Response (0x0005)
+        if let nIdx = featureIndices[HIDPPFeature.deviceNameType.rawValue], rFeatureIdx == nIdx {
+            // Function 0x01 getDeviceName response: data[4..] = UTF-8 name characters
+            var nameBytes: [UInt8] = []
+            for i in 4..<data.count {
+                if data[i] == 0 { break }
+                nameBytes.append(data[i])
+            }
+            if let deviceName = String(bytes: nameBytes, encoding: .utf8), !deviceName.isEmpty {
+                debugLog("📛 Device name from HID++: \(deviceName)")
+                DispatchQueue.main.async {
+                    // Update the name in allDevices for the active HID++ device
+                    if !self.activeDeviceUniqueId.isEmpty,
+                       var state = self.allDevices[self.activeDeviceUniqueId] {
+                        state.name = deviceName
+                        self.allDevices[self.activeDeviceUniqueId] = state
+                        self.updatePrimaryDevice()
+                    }
+                }
+            }
+            return
+        }
 
     }
     
@@ -359,6 +393,21 @@ class HIDDriver: ObservableObject {
         report[2] = index
         report[3] = 0x00
         debugLog("🔋 Requesting battery (index=\(index) devIdx=0x\(String(format:"%02X",deviceIndex)))")
+        IOHIDDeviceSetReport(device, kIOHIDReportTypeOutput, CFIndex(report[0]), report, report.count)
+    }
+    func requestDeviceName() {
+        guard let device = activeDevice else { return }
+        guard let index = featureIndices[HIDPPFeature.deviceNameType.rawValue] else {
+            discoverFeature(.deviceNameType)
+            return
+        }
+        var report = [UInt8](repeating: 0, count: 20)
+        report[0] = HIDPP20.REPORT_ID_LONG
+        report[1] = deviceIndex
+        report[2] = index
+        report[3] = 0x10  // function 0x01 (getDeviceName), shifted left 4 bits
+        report[4] = 0x00  // charIndex = 0 (start from beginning)
+        debugLog("📛 Requesting device name (index=\(index) devIdx=0x\(String(format:"%02X",deviceIndex)))")
         IOHIDDeviceSetReport(device, kIOHIDReportTypeOutput, CFIndex(report[0]), report, report.count)
     }
     
