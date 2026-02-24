@@ -87,3 +87,17 @@
 "Disabled" = "Disabled";
 "systemBehavior" = "System Behavior";
 "Language" = "Language";
+
+// Update Manager
+"Auto Check for Updates" = "Auto Check for Updates";
+"Check for Updates Now" = "Check for Updates Now";
+"Check for Updates..." = "Check for Updates...";
+"Update Check Failed" = "Update Check Failed";
+"Unable to check for updates. Please check your network connection." = "Unable to check for updates. Please check your network connection.";
+"Update Available Format" = "New version available: %@";
+"Would you like to download it now?" = "Would you like to download it now?";
+"Release Notes:" = "Release Notes:";
+"Download" = "Download";
+"Later" = "Later";
+"You're Up to Date!" = "You're Up to Date!";
+"Whisker is currently the newest version available." = "Version %@ is currently the newest version available.";

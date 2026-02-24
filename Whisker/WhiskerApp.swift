@@ -14,13 +14,14 @@ struct WhiskerApp: App {
     @StateObject private var driver = HIDDriver()
     @StateObject private var eventManager = EventTapManager()
     @StateObject private var profileManager = ProfileManager()
+    @StateObject private var updateManager = UpdateManager()
     
     @AppStorage("AppLanguage") private var appLanguage = "system"
     @State private var isWindowVisible = true
 
     var body: some Scene {
         WindowGroup(id: "main-window") {
-            ContentView(driver: driver, eventManager: eventManager, profileManager: profileManager)
+            ContentView(driver: driver, eventManager: eventManager, profileManager: profileManager, updateManager: updateManager)
                 .environment(\.locale, localeForLanguage(appLanguage))
                 .onAppear {
                     eventManager.start()
@@ -31,7 +32,7 @@ struct WhiskerApp: App {
         .defaultPosition(.center)
         
         MenuBarExtra {
-            WhiskerMenu(driver: driver, eventManager: eventManager, profileManager: profileManager)
+            WhiskerMenu(driver: driver, eventManager: eventManager, profileManager: profileManager, updateManager: updateManager)
                 .environment(\.locale, localeForLanguage(appLanguage))
         } label: {
             HStack(spacing: 4) {
@@ -54,6 +55,7 @@ struct WhiskerMenu: View {
     @ObservedObject var driver: HIDDriver
     @ObservedObject var eventManager: EventTapManager
     @ObservedObject var profileManager: ProfileManager
+    @ObservedObject var updateManager: UpdateManager
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -93,11 +95,11 @@ struct WhiskerMenu: View {
             
             Divider()
             
-            Toggle("Smooth Scrolling", isOn: $eventManager.smoothScrollEnabled)
+            Toggle(Localizer.get("Smooth Scrolling"), isOn: $eventManager.smoothScrollEnabled)
             
             Divider()
             
-            Button("Open Control Center") {
+            Button(Localizer.get("Open Control Center")) {
                 openWindow(id: "main-window")
                 NSApp.activate(ignoringOtherApps: true)
                 for window in NSApp.windows {
@@ -107,7 +109,11 @@ struct WhiskerMenu: View {
                 }
             }
             
-            Button("Quit Whisker") {
+            Button(Localizer.get("Check for Updates...")) {
+                updateManager.checkForUpdates(manual: true)
+            }
+            
+            Button(Localizer.get("Quit Whisker")) {
                 NSApplication.shared.terminate(nil)
             }
         }

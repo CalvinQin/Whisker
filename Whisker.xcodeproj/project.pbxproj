@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		UPDATE0123456789ABCDEF1 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = UPDATE0123456789ABCDEF0 /* UpdateManager.swift */; };
 		06FEED0EC25D603F94954F15 /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A69CE5BA61A14D2EC539FC4C /* ProfileManager.swift */; };
 		205444D2143209AD6C733B81 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1557ED9DFE6193C2C0830E /* SettingsView.swift */; };
 		6237825B54A7B3A1BB132E72 /* EventTapManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4152DF1C4C88C00CDEB63035 /* EventTapManager.swift */; };
@@ -24,6 +25,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		UPDATE0123456789ABCDEF0 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		376AC235CB1CACFE20CB50B3 /* Whisker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Whisker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4152DF1C4C88C00CDEB63035 /* EventTapManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTapManager.swift; sourceTree = "<group>"; };
 		56193776749F046566D12E6C /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -63,6 +65,7 @@
 		ED49AD952DF4DE921D5CC062 /* Whisker */ = {
 			isa = PBXGroup;
 			children = (
+				UPDATE0123456789ABCDEF0 /* UpdateManager.swift */,
 				56193776749F046566D12E6C /* ContentView.swift */,
 				4152DF1C4C88C00CDEB63035 /* EventTapManager.swift */,
 				C2D35F4652EA5FB002C81F54 /* HIDDriver.swift */,
@@ -155,6 +158,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				UPDATE0123456789ABCDEF1 /* UpdateManager.swift in Sources */,
 				75D76864EDC325E7FB05B5B8 /* ContentView.swift in Sources */,
 				6237825B54A7B3A1BB132E72 /* EventTapManager.swift in Sources */,
 				CEF12FC7DA73B2FC9BA3947A /* HIDDriver.swift in Sources */,

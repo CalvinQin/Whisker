@@ -7,6 +7,7 @@ struct ContentView: View {
     @ObservedObject var driver: HIDDriver
     @ObservedObject var eventManager: EventTapManager
     @ObservedObject var profileManager: ProfileManager
+    @ObservedObject var updateManager: UpdateManager
     
     @State private var selectedMouse: String = "M720 Triathlon"
     @State private var activeCID: UInt16? = nil
@@ -18,6 +19,7 @@ struct ContentView: View {
     @AppStorage("AppLanguage") private var appLanguage: String = "system"
     @AppStorage("hideDockIcon") private var hideDockIcon: Bool = false
     @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
+    @AppStorage("AutoCheckUpdates") private var autoCheckUpdates: Bool = true
     
     var currentDeviceName: String {
         return driver.connectedDevices[selectedMouse]?.name ?? selectedMouse
@@ -420,12 +422,38 @@ struct ContentView: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                 }
+                
+                Divider()
+                
+                HStack {
+                    Text(Localizer.get("Auto Check for Updates"))
+                        .font(.system(size: 14))
+                    Spacer()
+                    Toggle("", isOn: $autoCheckUpdates)
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .onChange(of: autoCheckUpdates) { newValue in
+                             updateManager.autoCheckUpdates = newValue
+                        }
+                }
+                
+                Button(action: {
+                    updateManager.checkForUpdates(manual: true)
+                }) {
+                    HStack {
+                        Spacer()
+                        Text(Localizer.get("Check for Updates Now"))
+                        Spacer()
+                    }
+                }
+                .padding(.top, 8)
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
             .cornerRadius(10)
             
             Spacer()
+
         }
         .padding(16)
     }

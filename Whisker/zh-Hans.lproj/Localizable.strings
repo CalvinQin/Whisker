@@ -89,3 +89,17 @@
 "Disabled" = "禁用";
 "systemBehavior" = "系统行为";
 "Language" = "语言";
+
+// Update Manager
+"Auto Check for Updates" = "自动检查更新";
+"Check for Updates Now" = "立即检查更新";
+"Check for Updates..." = "检查更新...";
+"Update Check Failed" = "检查更新失败";
+"Unable to check for updates. Please check your network connection." = "无法检查更新，请检查您的网络连接。";
+"Update Available Format" = "发现新版本: %@";
+"Would you like to download it now?" = "您想要立即下载吗？";
+"Release Notes:" = "更新日志：";
+"Download" = "去下载";
+"Later" = "以后再说";
+"You're Up to Date!" = "已经是最新版本";
+"Whisker is currently the newest version available." = "当前版本 %@ 已是最新。";
