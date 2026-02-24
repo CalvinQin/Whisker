@@ -135,10 +135,21 @@ struct WhiskerMenu: View {
 struct Localizer {
     static var bundle: Bundle {
         let appLanguage = UserDefaults.standard.string(forKey: "AppLanguage") ?? "system"
+        
+        let lang: String
         if appLanguage == "system" {
-            return .main
+            // Get system preferred language and map to our supported lprojs
+            let preferred = Locale.preferredLanguages.first ?? "en"
+            if preferred.hasPrefix("zh") {
+                lang = "zh-Hans"
+            } else {
+                lang = "en"
+            }
+        } else {
+            lang = appLanguage
         }
-        guard let path = Bundle.main.path(forResource: appLanguage, ofType: "lproj"),
+        
+        guard let path = Bundle.main.path(forResource: lang, ofType: "lproj"),
               let specificBundle = Bundle(path: path) else {
             return .main
         }

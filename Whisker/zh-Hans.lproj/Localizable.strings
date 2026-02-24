@@ -120,3 +120,11 @@
 "Receiver" = "接收器";
 "Bluetooth" = "蓝牙";
 "Unknown" = "未知";
+
+// Self-Update
+"Would you like to update now?" = "您想要立即更新吗？";
+"Update Now" = "立即更新";
+"Download failed. Please try again." = "下载失败，请重试。";
+"Update installation failed. Please try again." = "更新安装失败，请重试。";
+"Update Failed" = "更新失败";
+"OK" = "好";

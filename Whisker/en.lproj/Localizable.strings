@@ -118,3 +118,11 @@
 "Receiver" = "Receiver";
 "Bluetooth" = "Bluetooth";
 "Unknown" = "Unknown";
+
+// Self-Update
+"Would you like to update now?" = "Would you like to update now?";
+"Update Now" = "Update Now";
+"Download failed. Please try again." = "Download failed. Please try again.";
+"Update installation failed. Please try again." = "Update installation failed. Please try again.";
+"Update Failed" = "Update Failed";
+"OK" = "OK";

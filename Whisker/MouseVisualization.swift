@@ -144,12 +144,13 @@ struct MouseVisualization: View {
             let h = geometry.size.height
             
             ZStack {
-                if mouseType == "G Pro Wireless" || mouseType.isEmpty {
-                    gProView(w: w, h: h)
-                } else if mouseType == "M720 Triathlon" {
+                let lower = mouseType.lowercased()
+                if lower.contains("m720") || lower.contains("triathlon") {
                     m720View(w: w, h: h)
-                } else if mouseType == "ATK Dragonfly A9" {
+                } else if lower.contains("atk") || lower.contains("dragonfly") {
                     atkView(w: w, h: h)
+                } else if lower.contains("g pro") || lower.contains("gpro") || lower.isEmpty {
+                    gProView(w: w, h: h)
                 } else {
                     gProView(w: w, h: h)
                 }
