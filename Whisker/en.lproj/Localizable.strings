@@ -101,3 +101,20 @@
 "Later" = "Later";
 "You're Up to Date!" = "You're Up to Date!";
 "Whisker is currently the newest version available." = "Version %@ is currently the newest version available.";
+
+// Menu Bar
+"Device:" = "Device:";
+"Connection:" = "Connection:";
+"Battery:" = "Battery:";
+"Quick Profiles" = "Quick Profiles";
+"Open Control Center" = "Open Control Center";
+"Quit Whisker" = "Quit Whisker";
+"Smooth Scrolling" = "Smooth Scrolling";
+"Connected Devices" = "Connected Devices";
+"No Devices Connected" = "No Devices Connected";
+"Preview Supported Models" = "Preview Supported Models";
+"Supported Devices:" = "Supported Devices:";
+"USB" = "USB";
+"Receiver" = "Receiver";
+"Bluetooth" = "Bluetooth";
+"Unknown" = "Unknown";

@@ -22,7 +22,19 @@ struct ContentView: View {
     @AppStorage("AutoCheckUpdates") private var autoCheckUpdates: Bool = true
     
     var currentDeviceName: String {
-        return driver.connectedDevices[selectedMouse]?.name ?? selectedMouse
+        let rawName = driver.connectedDevices[selectedMouse]?.name ?? selectedMouse
+        return friendlyDeviceName(rawName)
+    }
+    
+    /// Map raw IOKit product name to a friendly display name
+    private func friendlyDeviceName(_ rawName: String) -> String {
+        let lower = rawName.lowercased()
+        if lower.contains("m720") || lower.contains("triathlon") { return "Logitech M720 Triathlon" }
+        if lower.contains("g pro") || lower.contains("gpro") { return "Logitech G Pro Wireless" }
+        if lower.contains("atk") || lower.contains("dragonfly") { return "ATK Dragonfly A9" }
+        if lower.contains("mx master") { return "Logitech MX Master" }
+        if lower.contains("mx anywhere") { return "Logitech MX Anywhere" }
+        return rawName
     }
     var body: some View {
         ZStack {
@@ -191,7 +203,7 @@ struct ContentView: View {
                 .foregroundStyle(batteryColor)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 3)
-                .background(Color.primary.opacity(0.05))
+                .background(Color.primary.opacity(0.08))
                 .cornerRadius(6)
             }
         }
@@ -230,7 +242,7 @@ struct ContentView: View {
             // Mouse model
             HStack {
                 Menu {
-                    Section("Connected Devices") {
+                    Section(Localizer.get("Connected Devices")) {
                         if driver.connectedDevices.isEmpty {
                             Text(Localizer.get("No Devices Connected"))
                         } else {
@@ -240,7 +252,7 @@ struct ContentView: View {
                                         selectedMouse = uniqueId
                                     } label: {
                                         HStack {
-                                            Text(state.name)
+                                            Text(friendlyDeviceName(state.name))
                                             Image(systemName: state.type.iconName)
                                         }
                                     }
@@ -248,10 +260,10 @@ struct ContentView: View {
                             }
                         }
                     }
-                    Section("Preview Supported Models") {
-                        Button("G Pro Wireless Preview") { selectedMouse = "G Pro Wireless" }
-                        Button("M720 Triathlon Preview") { selectedMouse = "M720 Triathlon" }
-                        Button("ATK Dragonfly Preview") { selectedMouse = "ATK Dragonfly A9" }
+                    Section(Localizer.get("Preview Supported Models")) {
+                        Button("G Pro Wireless") { selectedMouse = "G Pro Wireless" }
+                        Button("M720 Triathlon") { selectedMouse = "M720 Triathlon" }
+                        Button("ATK Dragonfly A9") { selectedMouse = "ATK Dragonfly A9" }
                     }
                 } label: {
                     HStack(spacing: 4) {

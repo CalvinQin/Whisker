@@ -103,3 +103,20 @@
 "Later" = "以后再说";
 "You're Up to Date!" = "已经是最新版本";
 "Whisker is currently the newest version available." = "当前版本 %@ 已是最新。";
+
+// Menu Bar
+"Device:" = "设备:";
+"Connection:" = "连接:";
+"Battery:" = "电量:";
+"Quick Profiles" = "快速切换配置";
+"Open Control Center" = "打开控制中心";
+"Quit Whisker" = "退出 Whisker";
+"Smooth Scrolling" = "丝滑滚动";
+"Connected Devices" = "已连接设备";
+"No Devices Connected" = "暂无已连接设备";
+"Preview Supported Models" = "预览支持的型号";
+"Supported Devices:" = "支持的设备:";
+"USB" = "USB 直连";
+"Receiver" = "接收器";
+"Bluetooth" = "蓝牙";
+"Unknown" = "未知";

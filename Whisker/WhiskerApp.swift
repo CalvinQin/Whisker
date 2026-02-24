@@ -58,25 +58,36 @@ struct WhiskerMenu: View {
     @ObservedObject var updateManager: UpdateManager
     @Environment(\.openWindow) private var openWindow
 
+    /// Map raw IOKit product name to a friendly display name
+    private func friendlyDeviceName(_ rawName: String) -> String {
+        let lower = rawName.lowercased()
+        if lower.contains("m720") || lower.contains("triathlon") { return "Logitech M720 Triathlon" }
+        if lower.contains("g pro") || lower.contains("gpro") { return "Logitech G Pro Wireless" }
+        if lower.contains("atk") || lower.contains("dragonfly") { return "ATK Dragonfly A9" }
+        if lower.contains("mx master") { return "Logitech MX Master" }
+        if lower.contains("mx anywhere") { return "Logitech MX Anywhere" }
+        return rawName
+    }
+    
     var body: some View {
         VStack {
             Text("Whisker").bold()
-            Text("Device: \(driver.deviceName)")
+            Text("\(Localizer.get("Device:")) \(friendlyDeviceName(driver.deviceName))")
                 .font(.caption)
             
             Divider()
             
             if driver.isConnected {
-                Text("Connection: \(driver.connectionType.rawValue)")
+                Text("\(Localizer.get("Connection:")) \(Localizer.get(driver.connectionType.rawValue))")
                     .foregroundColor(.secondary)
                 
-                Text("Battery: \(driver.batteryLevel)%")
+                Text("\(Localizer.get("Battery:")) \(driver.batteryLevel)%")
                     .foregroundColor(driver.batteryLevel > 20 ? .primary : .red)
             }
             
             Divider()
             
-            Menu("Quick Profiles") {
+            Menu(Localizer.get("Quick Profiles")) {
                 ForEach(profileManager.profiles) { profile in
                     Button(action: {
                         let target = driver.targetDeviceName.isEmpty ? driver.deviceName : driver.targetDeviceName
