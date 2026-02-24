@@ -30,7 +30,7 @@
 
 ## 🚀 快速开始
 
-1. **下载**: 从 [Releases](https://github.com/CalvinQin/Whisker/releases) 页面下载最新的 `Whisker.v1.1.1.app.zip`。
+1. **下载**: 从 [Releases](https://github.com/CalvinQin/Whisker/releases) 页面下载最新的 `Whisker.v1.1.2.app.zip`。
 2. **安装**: 将 `Whisker.app` 拖入您的 `Applications` 文件夹。
 3. **权限**: 由于涉及鼠标按键监听，首次运行请授予“辅助功能”权限。
 
