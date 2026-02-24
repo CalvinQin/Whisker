@@ -1,6 +1,6 @@
 # 🐭 Whisker
 
-**Whisker** 是一款专为 macOS 设计的罗技（Logitech）鼠标增强工具。它轻量、纯净，旨在为使用罗技鼠标但厌倦了臃肿官方驱动的用户提供核心的增强功能。
+**Whisker** 是一款专为 macOS 设计的外设增强工具。它轻量、纯净，旨在为使用各类鼠标或键盘但厌倦了臃肿官方驱动的用户提供核心的增强功能。
 
 <p align="center">
   <img src="Media/Screenshots/main.png" width="400" alt="Whisker Main View">
@@ -31,11 +31,13 @@
 目前的初始版本重点支持以下型号：
 
 - **Logitech M720 Triathlon**
+- **Logitech G Pro Wireless**
 - **Logitech MX 系列** (部分支持)
+- **ATK Dragonfly A9**
 
 > [!TIP]
 > **我们需要您的力量！**
-> Whisker 的目标是支持更多的罗技型号。如果您拥有其他型号的罗技鼠标并愿意协助测试，请在 [Issues](https://github.com/CalvinQin/Whisker/issues) 中提交您的设备信息。
+> Whisker 的远景目标是适配更多品牌和型号的鼠标及键盘系统。如果您拥有其他型号的外设并愿意协助测试，请在 [Issues](https://github.com/CalvinQin/Whisker/issues) 中提交您的设备信息。
 
 ## 🤝 贡献与想法
 
@@ -51,4 +53,4 @@
 
 ---
 
-*Made with ❤️ for the Logitech Community.*
+*Made with ❤️ for the Mac Peripheral Community.*
