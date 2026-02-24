@@ -16,9 +16,17 @@
 
 ## 📸 预览
 
-| 鼠标按键增强 | 系统设置 | 配置管理 |
+### 🐭 多品牌无缝适配
+
+| ATK Dragonfly A9 | Logitech G Pro Wireless | Logitech M720 Triathlon |
 | :---: | :---: | :---: |
-| <img src="Media/Screenshots/main.png" width="250"> | <img src="Media/Screenshots/settings.png" width="250"> | <img src="Media/Screenshots/profiles.png" width="250"> |
+| <img src="Media/Screenshots/atk_main.png" width="250" alt="ATK Dragonfly A9"> | <img src="Media/Screenshots/main.png" width="250" alt="Logitech G Pro Wireless"> | <img src="Media/Screenshots/m720_main.png" width="250" alt="Logitech M720 Triathlon"> |
+
+### ⚙️ 核心功能与状态栏
+
+| 状态栏快捷功能 | 配置管理 | 系统设置 |
+| :---: | :---: | :---: |
+| <img src="Media/Screenshots/menu_bar.png" width="250" alt="Menu Bar"> | <img src="Media/Screenshots/profiles.png" width="250" alt="Profiles View"> | <img src="Media/Screenshots/settings.png" width="250" alt="Settings View"> |
 
 ## 🚀 快速开始
 
