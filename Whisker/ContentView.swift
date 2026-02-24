@@ -19,6 +19,9 @@ struct ContentView: View {
     @AppStorage("hideDockIcon") private var hideDockIcon: Bool = false
     @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
     
+    var currentDeviceName: String {
+        return driver.connectedDevices[selectedMouse]?.name ?? selectedMouse
+    }
     var body: some View {
         ZStack {
             Color(NSColor.windowBackgroundColor)
@@ -97,7 +100,7 @@ struct ContentView: View {
     var isSelectedMouseConnected: Bool {
         guard driver.isConnected else { return false }
         let deviceLower = driver.deviceName.lowercased()
-        let selectedLower = selectedMouse.lowercased()
+        let selectedLower = currentDeviceName.lowercased()
         
         if deviceLower.contains("atk") || deviceLower.contains("dragonfly") {
             return selectedLower.contains("atk") || selectedLower.contains("dragonfly")
@@ -148,7 +151,7 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .popover(isPresented: $showingInfo, arrowEdge: .bottom) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Supported Devices:")
+                    Text(Localizer.get("Supported Devices:"))
                         .font(.headline)
                     Text("• Logitech G Pro Wireless")
                     Text("• Logitech M720 Triathlon")
@@ -163,7 +166,7 @@ struct ContentView: View {
             if isSelectedMouseConnected {
                 // Connection icons
                 HStack(spacing: 4) {
-                    if selectedMouse.contains("G Pro") {
+                    if currentDeviceName.contains("G Pro") {
                         connectionDot(.usb, icon: "cable.connector")
                         connectionDot(.receiver, icon: "antenna.radiowaves.left.and.right")
                     } else {
@@ -227,15 +230,15 @@ struct ContentView: View {
                 Menu {
                     Section("Connected Devices") {
                         if driver.connectedDevices.isEmpty {
-                            Text("No Devices Connected")
+                            Text(Localizer.get("No Devices Connected"))
                         } else {
-                            ForEach(Array(driver.connectedDevices.keys).sorted(), id: \.self) { name in
-                                if let state = driver.connectedDevices[name] {
+                            ForEach(Array(driver.connectedDevices.keys).sorted(), id: \.self) { uniqueId in
+                                if let state = driver.connectedDevices[uniqueId] {
                                     Button {
-                                        selectedMouse = name
+                                        selectedMouse = uniqueId
                                     } label: {
                                         HStack {
-                                            Text(name)
+                                            Text(state.name)
                                             Image(systemName: state.type.iconName)
                                         }
                                     }
@@ -250,7 +253,7 @@ struct ContentView: View {
                     }
                 } label: {
                     HStack(spacing: 4) {
-                        Text(selectedMouse)
+                        Text(currentDeviceName)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.primary)
                         Image(systemName: "chevron.up.chevron.down")
@@ -278,7 +281,7 @@ struct ContentView: View {
             
             // Mouse Visualization
             MouseVisualization(
-                mouseType: selectedMouse,
+                mouseType: currentDeviceName,
                 activeCID: $activeCID,
                 selectedButton: $selectedButtonForMapping,
                 eventManager: eventManager
@@ -377,7 +380,7 @@ struct ContentView: View {
         VStack(spacing: 24) {
             // Language Setting
             VStack(alignment: .leading, spacing: 12) {
-                Text(String(localized: "Language"))
+                Text("Language")
                     .font(.headline)
                     .foregroundColor(.secondary)
                 Picker("", selection: $appLanguage) {
@@ -394,12 +397,12 @@ struct ContentView: View {
             
             // Startup & Launch Settings
             VStack(alignment: .leading, spacing: 16) {
-                Text("System Behavior")
+                Text("systemBehavior")
                     .font(.headline)
                     .foregroundColor(.secondary)
                     
                 HStack {
-                    Text(String(localized: "launchAtLogin"))
+                    Text("launchAtLogin")
                         .font(.system(size: 14))
                     Spacer()
                     Toggle("", isOn: $launchAtLogin)
@@ -410,7 +413,7 @@ struct ContentView: View {
                 Divider()
                 
                 HStack {
-                    Text(String(localized: "hideDockIcon"))
+                    Text("hideDockIcon")
                         .font(.system(size: 14))
                     Spacer()
                     Toggle("", isOn: $hideDockIcon)

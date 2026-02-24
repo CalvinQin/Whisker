@@ -81,3 +81,11 @@
 
 "launchAtLogin" = "开机自动启动";
 "hideDockIcon" = "隐藏程序坞图标 (仅保留在顶部菜单栏)";
+"Basic Clicks" = "基础点击";
+"Navigation" = "网页导航";
+"OS Controls" = "系统控制";
+"Shortcuts" = "快捷键";
+"Custom Shortcut..." = "自定义快捷键...";
+"Disabled" = "禁用";
+"systemBehavior" = "系统行为";
+"Language" = "语言";

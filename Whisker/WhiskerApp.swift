@@ -15,11 +15,13 @@ struct WhiskerApp: App {
     @StateObject private var eventManager = EventTapManager()
     @StateObject private var profileManager = ProfileManager()
     
+    @AppStorage("AppLanguage") private var appLanguage = "system"
     @State private var isWindowVisible = true
 
     var body: some Scene {
         WindowGroup(id: "main-window") {
             ContentView(driver: driver, eventManager: eventManager, profileManager: profileManager)
+                .environment(\.locale, localeForLanguage(appLanguage))
                 .onAppear {
                     eventManager.start()
                 }
@@ -30,6 +32,7 @@ struct WhiskerApp: App {
         
         MenuBarExtra {
             WhiskerMenu(driver: driver, eventManager: eventManager, profileManager: profileManager)
+                .environment(\.locale, localeForLanguage(appLanguage))
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "computermouse.fill")
@@ -39,6 +42,11 @@ struct WhiskerApp: App {
                 }
             }
         }
+    }
+    
+    // MARK: - Helpers
+    private func localeForLanguage(_ lang: String) -> Locale {
+        lang == "system" ? Locale.autoupdatingCurrent : Locale(identifier: lang)
     }
 }
 
@@ -103,5 +111,24 @@ struct WhiskerMenu: View {
                 NSApplication.shared.terminate(nil)
             }
         }
+    }
+}
+
+// MARK: - Dynamic Bundle Localization
+struct Localizer {
+    static var bundle: Bundle {
+        let appLanguage = UserDefaults.standard.string(forKey: "AppLanguage") ?? "system"
+        if appLanguage == "system" {
+            return .main
+        }
+        guard let path = Bundle.main.path(forResource: appLanguage, ofType: "lproj"),
+              let specificBundle = Bundle(path: path) else {
+            return .main
+        }
+        return specificBundle
+    }
+
+    static func get(_ key: String) -> String {
+        return bundle.localizedString(forKey: key, value: key, table: nil)
     }
 }

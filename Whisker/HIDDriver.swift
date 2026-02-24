@@ -55,6 +55,8 @@ class HIDDriver: ObservableObject {
         let device: IOHIDDevice
         let type: ConnectionType
         var batteryLevel: Int = 0
+        let name: String
+        let uniqueId: String
     }
     private var allDevices: [String: DeviceState] = [:]
     
@@ -125,9 +127,19 @@ class HIDDriver: ObservableObject {
             }
         }
         
-        debugLog("Connection type: \(connType.rawValue) deviceIndex=0x\(String(format:"%02X",deviceIndex))")
+        let locationId = IOHIDDeviceGetProperty(device, kIOHIDLocationIDKey as CFString) as? UInt32 ?? 0
+        let serial = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String ?? ""
         
-        allDevices[name] = DeviceState(device: device, type: connType, batteryLevel: 0)
+        let uniqueId: String
+        if !serial.isEmpty && serial.trimmingCharacters(in: .whitespaces) != "" {
+            uniqueId = "\(name)_\(serial)"
+        } else {
+            uniqueId = "\(name)_\(locationId)"
+        }
+        
+        debugLog("Connection type: \(connType.rawValue) deviceIndex=0x\(String(format:"%02X",deviceIndex)) uniqueId=\(uniqueId)")
+        
+        allDevices[uniqueId] = DeviceState(device: device, type: connType, batteryLevel: 0, name: name, uniqueId: uniqueId)
         updatePrimaryDevice()
         
         // HID++ capable interface detection (Only for Logitech 0x046D)
@@ -159,7 +171,15 @@ class HIDDriver: ObservableObject {
     
     private func handleDeviceDisconnected(_ device: IOHIDDevice) {
         if let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String {
-            allDevices.removeValue(forKey: name)
+            let locationId = IOHIDDeviceGetProperty(device, kIOHIDLocationIDKey as CFString) as? UInt32 ?? 0
+            let serial = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String ?? ""
+            let uniqueId: String
+            if !serial.isEmpty && serial.trimmingCharacters(in: .whitespaces) != "" {
+                uniqueId = "\(name)_\(serial)"
+            } else {
+                uniqueId = "\(name)_\(locationId)"
+            }
+            allDevices.removeValue(forKey: uniqueId)
         }
         
         if activeDevice == device {
@@ -291,8 +311,12 @@ class HIDDriver: ObservableObject {
             debugLog("🔋 Battery (0x1000): \(level)%")
             DispatchQueue.main.async {
                 if level > 0 {
-                    if let device = self.activeDevice, let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String {
-                        self.allDevices[name]?.batteryLevel = level
+                    if let device = self.activeDevice {
+                        let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "Logitech"
+                        let locationId = IOHIDDeviceGetProperty(device, kIOHIDLocationIDKey as CFString) as? UInt32 ?? 0
+                        let serial = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String ?? ""
+                        let uniqueId = (!serial.isEmpty && serial.trimmingCharacters(in: .whitespaces) != "") ? "\(name)_\(serial)" : "\(name)_\(locationId)"
+                        self.allDevices[uniqueId]?.batteryLevel = level
                     }
                     self.updatePrimaryDevice()
                 }
@@ -307,8 +331,12 @@ class HIDDriver: ObservableObject {
             let level = soc > 0 ? soc : ([1:5, 3:25, 5:60, 7:100][qual] ?? 50)
             debugLog("🔋 Battery (0x1001): \(level)%")
             DispatchQueue.main.async {
-                if let device = self.activeDevice, let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String {
-                    self.allDevices[name]?.batteryLevel = level
+                if let device = self.activeDevice {
+                    let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "Logitech"
+                    let locationId = IOHIDDeviceGetProperty(device, kIOHIDLocationIDKey as CFString) as? UInt32 ?? 0
+                    let serial = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String ?? ""
+                    let uniqueId = (!serial.isEmpty && serial.trimmingCharacters(in: .whitespaces) != "") ? "\(name)_\(serial)" : "\(name)_\(locationId)"
+                    self.allDevices[uniqueId]?.batteryLevel = level
                 }
                 self.updatePrimaryDevice()
             }

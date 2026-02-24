@@ -11,8 +11,10 @@ struct MouseCallout: View {
     @State private var calloutPoint: CGPoint = .zero
     @State private var parentSize: CGSize = .zero
     
+    @AppStorage("AppLanguage") private var appLanguage = "system"
+    
     var currentActionText: String {
-        return eventManager.buttonMappings[button]?.rawValue ?? button.defaultAction.rawValue
+        return eventManager.buttonMappings[button]?.displayString() ?? button.defaultAction.displayString()
     }
     
     var body: some View {
@@ -37,27 +39,27 @@ struct MouseCallout: View {
             // Callout Menu
             Menu {
                 // Same logic as MappingMenu
-                Section("Basic Clicks") {
+                Section(Localizer.get("Basic Clicks")) {
                     actionButton(for: .original("Primary Click"))
                     actionButton(for: .original("Secondary Click"))
                     actionButton(for: .original("Middle Click"))
                 }
-                Section("Navigation") {
+                Section(Localizer.get("Navigation")) {
                     actionButton(for: .original("Back"))
                     actionButton(for: .original("Forward"))
                     actionButton(for: .scrollUp)
                     actionButton(for: .scrollDown)
                 }
-                Section("OS Controls") {
+                Section(Localizer.get("OS Controls")) {
                     actionButton(for: .missionControl)
                     actionButton(for: .appExpose)
                     actionButton(for: .showDesktop)
                     actionButton(for: .launchpad)
                 }
-                Section("Shortcuts") {
+                Section(Localizer.get("Shortcuts")) {
                     actionButton(for: .copy)
                     actionButton(for: .paste)
-                    Button("Custom Shortcut...") {
+                    Button(Localizer.get("Custom Shortcut...")) {
                         showingRecorder = true
                     }
                 }
@@ -66,10 +68,10 @@ struct MouseCallout: View {
                 }
             } label: {
                 HStack(spacing: 4) {
-                    Text(String(localized: LocalizedStringResource(stringLiteral: button.label)))
+                    Text(Localizer.get(button.label))
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.secondary)
-                    Text(String(localized: LocalizedStringResource(stringLiteral: currentActionText)))
+                    Text(currentActionText)
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(.primary)
                     Image(systemName: "chevron.up.chevron.down")
@@ -87,7 +89,7 @@ struct MouseCallout: View {
             .position(calloutPoint)
             .sheet(isPresented: $showingRecorder) {
                 VStack {
-                    Text("Press Shortcut for \(String(localized: LocalizedStringResource(stringLiteral: button.label)))")
+                    Text("Press Shortcut for \(Localizer.get(button.defaultAction.rawValue))")
                         .padding()
                     KeyboardRecorder(isRecording: $showingRecorder) { code, flags in
                         eventManager.buttonMappings[button] = .customShortcut(key: code, flags: flags)
@@ -116,14 +118,15 @@ struct MouseCallout: View {
     }
     
     @ViewBuilder
-    func actionButton(for action: MouseAction) -> some View {
+    private func actionButton(for action: MouseAction) -> some View {
         Button {
             eventManager.buttonMappings[button] = action
         } label: {
-            if eventManager.buttonMappings[button] == action {
-                Text("✓ " + String(localized: LocalizedStringResource(stringLiteral: action.rawValue)))
-            } else {
-                Text(String(localized: LocalizedStringResource(stringLiteral: action.rawValue)))
+            HStack {
+                Text(action.displayString())
+                if eventManager.buttonMappings[button] == action {
+                    Image(systemName: "checkmark")
+                }
             }
         }
     }

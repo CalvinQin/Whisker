@@ -119,6 +119,34 @@ enum MouseAction: Hashable, Codable, Equatable, Identifiable {
     }
 
     var id: String { rawValue }
+    
+    func displayString() -> String {
+        switch self {
+        case .customShortcut(let key, let flags):
+            return "\(MouseAction.stringFor(flags: flags))\(MouseAction.stringFor(keyCode: key))"
+        case .none:
+            return Localizer.get("Disabled")
+        default:
+            return Localizer.get(rawValue)
+        }
+    }
+    
+    static func stringFor(keyCode: CGKeyCode) -> String {
+        let keyMap: [CGKeyCode: String] = [
+            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X", 8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R", 16: "Y", 17: "T", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6", 23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0", 30: "]", 31: "O", 32: "U", 33: "[", 34: "I", 35: "P", 36: "Return", 37: "L", 38: "J", 39: "'", 40: "K", 41: ";", 42: "\\", 43: ",", 44: "/", 45: "N", 46: "M", 47: ".", 48: "Tab", 49: "Space", 50: "`", 51: "Delete", 53: "Esc", 123: "←", 124: "→", 125: "↓", 126: "↑"
+        ]
+        return keyMap[keyCode] ?? "Key \(keyCode)"
+    }
+
+    static func stringFor(flags: UInt64) -> String {
+        let cgFlags = CGEventFlags(rawValue: flags)
+        var parts: [String] = []
+        if cgFlags.contains(.maskCommand) { parts.append("⌘") }
+        if cgFlags.contains(.maskShift) { parts.append("⇧") }
+        if cgFlags.contains(.maskAlternate) { parts.append("⌥") }
+        if cgFlags.contains(.maskControl) { parts.append("⌃") }
+        return parts.joined()
+    }
 }
 
 enum MouseButton: Int, Codable, CaseIterable, Identifiable {
@@ -135,14 +163,14 @@ enum MouseButton: Int, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .left: return "Left Click"
-        case .right: return "Right Click"
-        case .middle: return "Middle Click"
-        case .side1: return "Side Button 1"
-        case .side2: return "Side Button 2"
-        case .side3: return "Side Button 3"
-        case .side4: return "Side Button 4"
-        case .gesture: return "Gesture Button"
+        case .left: return "L"
+        case .right: return "R"
+        case .middle: return "Mid"
+        case .side1: return "S1"
+        case .side2: return "S2"
+        case .side3: return "S3"
+        case .side4: return "S4"
+        case .gesture: return "GB"
         }
     }
 
@@ -268,6 +296,12 @@ class EventTapManager: ObservableObject {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
             return nil
+        }
+        
+        // Isolate from Trackpad (Subtype 0 is standard mouse, 3 is trackpad, etc.)
+        let subtype = event.getIntegerValueField(.mouseEventSubtype)
+        guard subtype == 0 else {
+            return Unmanaged.passUnretained(event)
         }
         
         // Handle scroll wheel events for smooth scrolling

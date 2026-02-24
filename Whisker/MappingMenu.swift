@@ -17,10 +17,13 @@ struct MappingMenu: View {
             return false
         }
     }
-    
+
+    @Environment(\.colorScheme) var colorScheme
+    @AppStorage("AppLanguage") private var appLanguage = "system"
+
     var body: some View {
         VStack(spacing: 0) {
-            Text(String(localized: LocalizedStringResource(stringLiteral: button.label)))
+            Text(Localizer.get(button.label))
                 .font(.headline)
                 .padding(.top, 12)
                 .padding(.bottom, 8)
@@ -92,10 +95,11 @@ struct MappingMenu: View {
                                 Image(systemName: "keyboard")
                                     .font(.system(size: 12))
                             }
-                            Text(String(localized: "customShortcut"))
+                            Text(Localizer.get("customShortcut"))
                             Spacer()
                             if isCustomShortcutActive {
-                                Text(currentMapping.rawValue.replacingOccurrences(of: "Custom:", with: ""))
+                                Text(currentMapping.displayString())
+                                    .foregroundColor(.secondary)
                                     .font(.caption2)
                                     .opacity(0.8)
                             }
@@ -155,7 +159,7 @@ struct MenuSection: View {
                     } else {
                         Spacer().frame(width: 16)
                     }
-                    Text(String(localized: LocalizedStringResource(stringLiteral: action.rawValue)))
+                    Text(action.displayString())
                     Spacer()
                 }
                 .padding(.horizontal, 12)
@@ -177,6 +181,8 @@ struct KeyboardRecorder: View {
     @State private var monitor: Any?
     @State private var currentKeys: String = ""
     
+    @AppStorage("AppLanguage") private var appLanguage = "system"
+    
     var body: some View {
         VStack(spacing: 12) {
             if !currentKeys.isEmpty {
@@ -187,13 +193,13 @@ struct KeyboardRecorder: View {
                     .background(Color.orange.opacity(0.1))
                     .cornerRadius(6)
             } else {
-                Text(String(localized: "pressAnyKey"))
+                Text(Localizer.get("pressAnyKey"))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             
             HStack {
-                Button(String(localized: "stopRecording")) {
+                Button(Localizer.get("stopRecording")) {
                     stopMonitoring()
                     isRecording = false
                 }
