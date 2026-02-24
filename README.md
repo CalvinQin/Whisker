@@ -22,7 +22,7 @@
 
 ## 🚀 快速开始
 
-1. **下载**: 从 [Releases](https://github.com/haoqiqin/Whisker/releases) 页面下载最新的 `Whisker.v1.0.app.zip`。
+1. **下载**: 从 [Releases](https://github.com/CalvinQin/Whisker/releases) 页面下载最新的 `Whisker.v1.0.app.zip`。
 2. **安装**: 将 `Whisker.app` 拖入您的 `Applications` 文件夹。
 3. **权限**: 由于涉及鼠标按键监听，首次运行请授予“辅助功能”权限。
 
@@ -35,7 +35,7 @@
 
 > [!TIP]
 > **我们需要您的力量！**
-> Whisker 的目标是支持更多的罗技型号。如果您拥有其他型号的罗技鼠标并愿意协助测试，请在 [Issues](https://github.com/haoqiqin/Whisker/issues) 中提交您的设备信息。
+> Whisker 的目标是支持更多的罗技型号。如果您拥有其他型号的罗技鼠标并愿意协助测试，请在 [Issues](https://github.com/CalvinQin/Whisker/issues) 中提交您的设备信息。
 
 ## 🤝 贡献与想法
 
