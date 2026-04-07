@@ -66,6 +66,9 @@ struct ContentView: View {
             profileManager.applyProfile(for: newSelection, eventManager: eventManager)
         }
         .onAppear {
+            driver.rawButtonHandler = { button, isDown in
+                eventManager.handleRawButtonEvent(button, isDown: isDown)
+            }
             if selectedMouse.contains("ATK") {
                 driver.targetDeviceName = "atk"
             } else {

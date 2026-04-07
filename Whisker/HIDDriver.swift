@@ -37,6 +37,7 @@ class HIDDriver: ObservableObject {
     @Published var isConnected: Bool = false
     @Published var deviceName: String = "No Device"
     @Published var connectionType: ConnectionType = .unknown
+    var rawButtonHandler: ((MouseButton, Bool) -> Void)?
     
     // UI can set this to prioritize which device to show status for
     var targetDeviceName: String = "" {
@@ -86,6 +87,10 @@ class HIDDriver: ObservableObject {
         }, context)
         IOHIDManagerRegisterDeviceRemovalCallback(manager!, { (ctx, result, sender, device) in
             Unmanaged<HIDDriver>.fromOpaque(ctx!).takeUnretainedValue().handleDeviceDisconnected(device)
+        }, context)
+        IOHIDManagerRegisterInputValueCallback(manager!, { (ctx, result, sender, value) in
+            guard let ctx = ctx else { return }
+            Unmanaged<HIDDriver>.fromOpaque(ctx).takeUnretainedValue().handleInputValue(value)
         }, context)
         
         // CRITICAL: Must use main RunLoop, not CFRunLoopGetCurrent() which may be a background thread
@@ -195,6 +200,44 @@ class HIDDriver: ObservableObject {
             featureIndices.removeAll()
         }
         updatePrimaryDevice()
+    }
+
+    private func handleInputValue(_ value: IOHIDValue) {
+        let element = IOHIDValueGetElement(value)
+        let usagePage = IOHIDElementGetUsagePage(element)
+        let usage = IOHIDElementGetUsage(element)
+
+        guard usagePage == 0x09,
+              let button = MouseButton(hidUsage: Int(usage)),
+              button == .gesture || button == .side3 || button == .side4 else {
+            return
+        }
+
+        let intValue = IOHIDValueGetIntegerValue(value)
+        let isDown = intValue != 0
+
+        let device = IOHIDElementGetDevice(element)
+        let uniqueId = makeUniqueId(for: device)
+        let deviceName = (IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "").lowercased()
+        let target = targetDeviceName.lowercased()
+
+        guard !target.isEmpty else { return }
+        guard uniqueId.lowercased().contains(target) || deviceName.contains(target) else { return }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.rawButtonHandler?(button, isDown)
+        }
+    }
+
+    private func makeUniqueId(for device: IOHIDDevice) -> String {
+        let name = IOHIDDeviceGetProperty(device, kIOHIDProductKey as CFString) as? String ?? "Logitech"
+        let locationId = IOHIDDeviceGetProperty(device, kIOHIDLocationIDKey as CFString) as? UInt32 ?? 0
+        let serial = IOHIDDeviceGetProperty(device, kIOHIDSerialNumberKey as CFString) as? String ?? ""
+
+        if !serial.isEmpty && serial.trimmingCharacters(in: .whitespaces) != "" {
+            return "\(name)_\(serial)"
+        }
+        return "\(name)_\(locationId)"
     }
     
     private func updatePrimaryDevice() {

@@ -161,6 +161,20 @@ enum MouseButton: Int, Codable, CaseIterable, Identifiable {
 
     var id: Int { rawValue }
 
+    init?(hidUsage: Int) {
+        switch hidUsage {
+        case 1: self = .left
+        case 2: self = .right
+        case 3: self = .middle
+        case 4: self = .side1
+        case 5: self = .side2
+        case 6: self = .gesture
+        case 7: self = .side3
+        case 8: self = .side4
+        default: return nil
+        }
+    }
+
     var label: String {
         switch self {
         case .left: return "L"
@@ -289,6 +303,15 @@ class EventTapManager: ObservableObject {
         }
     }
 
+    func handleRawButtonEvent(_ button: MouseButton, isDown: Bool) {
+        guard let action = buttonMappings[button],
+              action != button.defaultAction else {
+            return
+        }
+
+        executeAction(action, isDown: isDown)
+    }
+
     private func handleEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
         // Handle tap disabled events (system can disable taps under load)
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
@@ -352,13 +375,13 @@ class EventTapManager: ObservableObject {
         }
         
         // Execute the custom action
-        executeAction(action, isDown: isDown, event: event)
+        executeAction(action, isDown: isDown)
         
         // Swallow the original hardware button event 
         return nil
     }
     
-    private func executeAction(_ action: MouseAction, isDown: Bool, event: CGEvent) {
+    private func executeAction(_ action: MouseAction, isDown: Bool) {
         switch action {
         case .original:
             break
