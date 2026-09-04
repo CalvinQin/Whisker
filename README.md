@@ -13,6 +13,7 @@
 - **轻量化设计**: 仅保留核心功能，极低的系统资源占用。
 - **连接状态**: 智能识别蓝牙、USB 及 Receiver 连接。
 - **自动同步**: 实时保存并同步您的鼠标配置。
+- **M720 手势键**: 支持自定义拇指托下方的 GB 手势键，并显示接管与按键检测状态。
 
 ## 📸 预览
 
@@ -30,9 +31,12 @@
 
 ## 🚀 快速开始
 
-1. **下载**: 从 [Releases](https://github.com/CalvinQin/Whisker/releases) 页面下载最新的 `Whisker.v1.1.5.app.zip`。
+1. **下载**: 从 [Releases](https://github.com/CalvinQin/Whisker/releases) 页面下载最新的 `Whisker.v1.1.6.app.zip`。
 2. **安装**: 将 `Whisker.app` 拖入您的 `Applications` 文件夹。
-3. **权限**: 由于涉及鼠标按键监听，首次运行请授予“辅助功能”权限。
+3. **权限**: 首次运行请授予“辅助功能”权限；使用 M720 的 GB 手势键时，还需授予“输入监控”权限。
+
+> [!NOTE]
+> 如果覆盖升级后 Whisker 再次显示权限提示，请在“系统设置 > 隐私与安全性”中重新启用 Whisker 的“辅助功能”和“输入监控”，然后重启 Whisker。
 
 ## 🛠 支持型号
 

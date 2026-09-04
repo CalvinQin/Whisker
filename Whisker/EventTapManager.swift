@@ -1,17 +1,13 @@
 import Foundation
 import CoreGraphics
 import AppKit
+import os
 
+private let eventTapLogger = Logger(subsystem: "com.haoqi.whisker", category: "EventTap")
 private func debugLog(_ msg: String) {
-    let line = "[\(Date())] \(msg)\n"
-    let path = NSHomeDirectory() + "/Desktop/whisker_hid.log"
-    if let handle = FileHandle(forWritingAtPath: path) {
-        handle.seekToEndOfFile()
-        handle.write(line.data(using: .utf8)!)
-        handle.closeFile()
-    } else {
-        FileManager.default.createFile(atPath: path, contents: line.data(using: .utf8))
-    }
+#if DEBUG
+    eventTapLogger.debug("\(msg, privacy: .public)")
+#endif
 }
 
 
@@ -205,11 +201,12 @@ enum MouseButton: Int, Codable, CaseIterable, Identifiable {
 class EventTapManager: ObservableObject {
     @Published var isEnabled: Bool = false
     @Published var hasAccessibilityPermission: Bool = false
-    @Published var buttonMappings: [MouseButton: MouseAction] = [:]
+    @Published private(set) var buttonMappings: [MouseButton: MouseAction] = [:]
     @Published var smoothScrollEnabled: Bool {
         didSet { UserDefaults.standard.set(smoothScrollEnabled, forKey: "smoothScrollEnabled") }
     }
 
+    var mappingChangeHandler: (([MouseButton: MouseAction]) -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -217,25 +214,40 @@ class EventTapManager: ObservableObject {
     init() {
         smoothScrollEnabled = UserDefaults.standard.bool(forKey: "smoothScrollEnabled")
         resetToDefaults()
-        checkAccessibilityPermission()
+        checkAccessibilityPermission(prompt: false)
     }
 
     func resetToDefaults() {
-        for button in MouseButton.allCases {
-            buttonMappings[button] = button.defaultAction
-        }
+        applyMappings(Dictionary(uniqueKeysWithValues: MouseButton.allCases.map { ($0, $0.defaultAction) }))
     }
 
-    func checkAccessibilityPermission() {
-        let options = [kAXTrustedCheckOptionPrompt.takeRetainedValue(): true] as CFDictionary
+    func applyMappings(_ mappings: [MouseButton: MouseAction]) {
+        buttonMappings = mappings
+    }
+
+    func setMapping(_ action: MouseAction, for button: MouseButton) {
+        guard buttonMappings[button] != action else { return }
+        buttonMappings[button] = action
+        mappingChangeHandler?(buttonMappings)
+    }
+
+    @discardableResult
+    func checkAccessibilityPermission(prompt: Bool = true) -> Bool {
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): prompt] as CFDictionary
         hasAccessibilityPermission = AXIsProcessTrustedWithOptions(options)
+        return hasAccessibilityPermission
     }
 
     func start() {
-        guard hasAccessibilityPermission else {
-            checkAccessibilityPermission()
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in self?.start() }
             return
         }
+
+        if !hasAccessibilityPermission {
+            checkAccessibilityPermission(prompt: false)
+        }
+        guard hasAccessibilityPermission else { return }
         guard eventTap == nil else { return }
 
         let buttonMask: CGEventMask = (
@@ -280,7 +292,7 @@ class EventTapManager: ObservableObject {
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
 
         if let source = runLoopSource {
-            CFRunLoopAddSource(CFRunLoopGetCurrent(), source, .commonModes)
+            CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
             CGEvent.tapEnable(tap: tap, enable: true)
             DispatchQueue.main.async {
                 self.isEnabled = true
@@ -294,7 +306,7 @@ class EventTapManager: ObservableObject {
             CGEvent.tapEnable(tap: tap, enable: false)
         }
         if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
         }
         eventTap = nil
         runLoopSource = nil
@@ -304,10 +316,8 @@ class EventTapManager: ObservableObject {
     }
 
     func handleRawButtonEvent(_ button: MouseButton, isDown: Bool) {
-        guard let action = buttonMappings[button],
-              action != button.defaultAction else {
-            return
-        }
+        guard let action = buttonMappings[button] else { return }
+        guard button == .gesture || action != button.defaultAction else { return }
 
         executeAction(action, isDown: isDown)
     }
@@ -320,7 +330,7 @@ class EventTapManager: ObservableObject {
             }
             return nil
         }
-        
+
         // Isolate from Trackpad (Subtype 0 is standard mouse, 3 is trackpad, etc.)
         let subtype = event.getIntegerValueField(.mouseEventSubtype)
         guard subtype == 0 else {
@@ -386,12 +396,12 @@ class EventTapManager: ObservableObject {
         case .original:
             break
         case .missionControl:
-            if isDown { DispatchQueue.global().async { self.launchApplication("Mission Control", isSystem: true) } }
+            if isDown { launchSystemApplication("Mission Control") }
         case .appExpose:
             // F10 is the universal standard for App Exposé in macOS if unmapped natively, or use shortcut
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x6D, flags: []) } } // F10
         case .launchpad:
-            if isDown { DispatchQueue.global().async { self.launchApplication("Launchpad", isSystem: true) } }
+            if isDown { launchSystemApplication("Launchpad") }
         case .moveLeftSpace:
             if isDown { DispatchQueue.global().async { self.performKeyboardShortcut(key: 0x7B, flags: [.maskControl]) } } // Ctrl+Left
         case .moveRightSpace:
@@ -508,13 +518,13 @@ class EventTapManager: ObservableObject {
         }
     }
 
-    private func launchApplication(_ name: String, isSystem: Bool = false) {
-        let url = isSystem ? URL(fileURLWithPath: "/System/Applications/\(name).app") : nil
-        if let appUrl = url {
-            NSWorkspace.shared.openApplication(at: appUrl, configuration: NSWorkspace.OpenConfiguration(), completionHandler: nil)
-        } else {
-            NSWorkspace.shared.launchApplication(name)
-        }
+    private func launchSystemApplication(_ name: String) {
+        let appURL = URL(fileURLWithPath: "/System/Applications/\(name).app")
+        NSWorkspace.shared.openApplication(
+            at: appURL,
+            configuration: NSWorkspace.OpenConfiguration(),
+            completionHandler: nil
+        )
     }
     
     private func handleScrollEvent(event: CGEvent) -> Unmanaged<CGEvent>? {
@@ -540,6 +550,7 @@ class EventTapManager: ObservableObject {
         
         return Unmanaged.passUnretained(event)
     }
+
     private func handleMouseMoveEvent(event: CGEvent) -> Unmanaged<CGEvent>? {
         return Unmanaged.passUnretained(event)
     }

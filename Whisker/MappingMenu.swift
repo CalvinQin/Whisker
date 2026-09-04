@@ -115,7 +115,7 @@ struct MappingMenu: View {
                     
                     if showingRecorder {
                         KeyboardRecorder(isRecording: $showingRecorder) { code, flags in
-                            eventManager.buttonMappings[button] = .customShortcut(key: code, flags: flags)
+                            eventManager.setMapping(.customShortcut(key: code, flags: flags), for: button)
                             showingRecorder = false
                         }
                         .padding(.vertical, 8)
@@ -149,7 +149,7 @@ struct MenuSection: View {
             let isSelected = currentMapping == action
             
             Button(action: {
-                eventManager.buttonMappings[button] = action
+                eventManager.setMapping(action, for: button)
             }) {
                 HStack {
                     if isSelected {

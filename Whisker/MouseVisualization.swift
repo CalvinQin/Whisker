@@ -92,7 +92,7 @@ struct MouseCallout: View {
                     Text("Press Shortcut for \(Localizer.get(button.defaultAction.rawValue))")
                         .padding()
                     KeyboardRecorder(isRecording: $showingRecorder) { code, flags in
-                        eventManager.buttonMappings[button] = .customShortcut(key: code, flags: flags)
+                        eventManager.setMapping(.customShortcut(key: code, flags: flags), for: button)
                         showingRecorder = false
                     }
                     Button("Cancel") { showingRecorder = false }
@@ -108,7 +108,7 @@ struct MouseCallout: View {
                     targetPoint = initialTarget
                     calloutPoint = initialCallout
                 }
-                .onChange(of: geo.size) { newSize in
+                .onChange(of: geo.size) { _, newSize in
                     parentSize = newSize
                     targetPoint = initialTarget
                     calloutPoint = initialCallout
@@ -120,7 +120,7 @@ struct MouseCallout: View {
     @ViewBuilder
     private func actionButton(for action: MouseAction) -> some View {
         Button {
-            eventManager.buttonMappings[button] = action
+            eventManager.setMapping(action, for: button)
         } label: {
             HStack {
                 Text(action.displayString())

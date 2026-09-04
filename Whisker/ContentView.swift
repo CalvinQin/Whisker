@@ -9,21 +9,41 @@ struct ContentView: View {
     @ObservedObject var profileManager: ProfileManager
     @ObservedObject var updateManager: UpdateManager
     
-    @State private var selectedMouse: String = "M720 Triathlon"
+    @State private var selectedMouse: String
     @State private var activeCID: UInt16? = nil
     @State private var showingSettings = false
     @State private var selectedButtonForMapping: MouseButton? = nil
     @State private var showSaveToast = false
     @State private var showingInfo = false
     @State private var selectedTab: Int = 0
+    @State private var launchAtLogin: Bool
+    @State private var settingsErrorMessage: String?
     @AppStorage("AppLanguage") private var appLanguage: String = "system"
     @AppStorage("hideDockIcon") private var hideDockIcon: Bool = false
-    @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
     @AppStorage("AutoCheckUpdates") private var autoCheckUpdates: Bool = true
+
+    init(
+        driver: HIDDriver,
+        eventManager: EventTapManager,
+        profileManager: ProfileManager,
+        updateManager: UpdateManager
+    ) {
+        self.driver = driver
+        self.eventManager = eventManager
+        self.profileManager = profileManager
+        self.updateManager = updateManager
+        _selectedMouse = State(initialValue: profileManager.lastSelectedDevice)
+        _launchAtLogin = State(initialValue: SMAppService.mainApp.status == .enabled)
+    }
     
     var currentDeviceName: String {
         let rawName = driver.connectedDevices[selectedMouse]?.name ?? selectedMouse
         return friendlyDeviceName(rawName)
+    }
+
+    private var selectedDeviceProfileKey: String {
+        let rawName = driver.connectedDevices[selectedMouse]?.name ?? selectedMouse
+        return ProfileManager.canonicalDeviceKey(rawName)
     }
     
     /// Map raw IOKit product name to a friendly display name
@@ -42,72 +62,69 @@ struct ContentView: View {
                 .ignoresSafeArea()
             
             if !eventManager.hasAccessibilityPermission {
-                OnboardingView(eventManager: eventManager)
+                OnboardingView(eventManager: eventManager, driver: driver)
             } else {
                 mainContent
                     .transition(.opacity)
             }
         }
         .frame(width: 460, height: 620)
-        .onChange(of: driver.deviceName) { newName in
-            let lower = newName.lowercased()
-            if lower.contains("atk") || lower.contains("dragonfly") {
-                selectedMouse = "ATK Dragonfly A9"
-            } else if lower.contains("m720") {
-                selectedMouse = "M720 Triathlon"
+        .onChange(of: driver.deviceName) { _, newName in
+            if ProfileManager.isRecognizedDevice(newName) {
+                let canonical = ProfileManager.canonicalDeviceKey(newName)
+                if selectedDeviceProfileKey != canonical {
+                    selectedMouse = canonical
+                }
             }
         }
-        .onChange(of: selectedMouse) { newSelection in
-            if newSelection.contains("ATK") {
-                driver.targetDeviceName = "atk"
-            } else {
-                driver.targetDeviceName = newSelection
-            }
-            profileManager.applyProfile(for: newSelection, eventManager: eventManager)
+        .onChange(of: selectedMouse) { _, newSelection in
+            driver.targetDeviceName = ProfileManager.hidMatchTerm(for: newSelection)
+            let rawName = driver.connectedDevices[newSelection]?.name ?? newSelection
+            profileManager.applyProfile(for: rawName, eventManager: eventManager)
         }
         .onAppear {
-            driver.rawButtonHandler = { button, isDown in
-                eventManager.handleRawButtonEvent(button, isDown: isDown)
-            }
-            if selectedMouse.contains("ATK") {
-                driver.targetDeviceName = "atk"
-            } else {
-                driver.targetDeviceName = selectedMouse
-            }
-            profileManager.applyProfile(for: selectedMouse, eventManager: eventManager)
-            let lower = driver.deviceName.lowercased()
-            if lower.contains("atk") || lower.contains("dragonfly") {
-                selectedMouse = "ATK Dragonfly A9"
-            }
-            
-            // Sync status on appear
+            driver.targetDeviceName = ProfileManager.hidMatchTerm(for: selectedMouse)
+            profileManager.applyProfile(for: selectedDeviceProfileKey, eventManager: eventManager)
+            eventManager.start()
+            driver.gestureActionsEnabled = eventManager.hasAccessibilityPermission
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            DockIconController.apply(hidden: hideDockIcon)
         }
-        .onChange(of: launchAtLogin) { newValue in
-            do {
-                if newValue {
-                    try SMAppService.mainApp.register()
-                } else {
-                    try SMAppService.mainApp.unregister()
-                }
-            } catch {
-                print("Failed to update Launch at Login: \(error)")
-                // Revert state if failed
-                launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        .onChange(of: hideDockIcon) { _, newValue in
+            DockIconController.apply(hidden: newValue, activateWhenShown: true)
+        }
+        .onChange(of: profileManager.lastSaveError) { _, newValue in
+            if let newValue {
+                settingsErrorMessage = newValue
             }
         }
-        .onChange(of: hideDockIcon) { newValue in
-            if newValue {
-                NSApp.setActivationPolicy(.accessory)
-            } else {
-                NSApp.setActivationPolicy(.regular)
-                NSApp.activate(ignoringOtherApps: true)
-            }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            eventManager.checkAccessibilityPermission(prompt: false)
+            eventManager.start()
+            driver.gestureActionsEnabled = eventManager.hasAccessibilityPermission
+            driver.refreshInputMonitoringPermission()
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+            DockIconController.apply(hidden: hideDockIcon)
         }
         .animation(.easeInOut(duration: 0.25), value: eventManager.hasAccessibilityPermission)
         .sheet(isPresented: $showingSettings) {
-            SettingsView(profileManager: profileManager, appLanguage: $appLanguage)
+            SettingsView(
+                profileManager: profileManager,
+                eventManager: eventManager,
+                deviceName: selectedDeviceProfileKey
+            )
                 .environment(\.locale, localeForLanguage(appLanguage))
+        }
+        .alert(
+            Localizer.get("Settings Update Failed"),
+            isPresented: Binding(
+                get: { settingsErrorMessage != nil },
+                set: { if !$0 { settingsErrorMessage = nil } }
+            )
+        ) {
+            Button(Localizer.get("OK"), role: .cancel) {}
+        } message: {
+            Text(settingsErrorMessage ?? "")
         }
         .environment(\.locale, localeForLanguage(appLanguage))
     }
@@ -295,6 +312,24 @@ struct ContentView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
+
+            if !driver.hasInputMonitoringPermission {
+                inputMonitoringBanner
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 6)
+            } else if driver.gestureControlConfigurationFailed,
+                      currentDeviceName.lowercased().contains("m720"),
+                      isSelectedMouseConnected {
+                gestureControlFailureBanner
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 6)
+            } else if driver.isGestureControlReady,
+                      currentDeviceName.lowercased().contains("m720"),
+                      isSelectedMouseConnected {
+                gestureControlReadyBanner
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 6)
+            }
             
             // Mouse Visualization
             MouseVisualization(
@@ -368,10 +403,11 @@ struct ContentView: View {
                             .font(.system(size: 14))
                     } else {
                         Button(action: {
-                            profileManager.activeProfileID = profile.id
-                            profileManager.deviceProfiles[selectedMouse] = profile.id
-                            profileManager.save()
-                            profileManager.applyProfile(for: selectedMouse, eventManager: eventManager)
+                            profileManager.selectProfile(
+                                profile.id,
+                                for: selectedDeviceProfileKey,
+                                eventManager: eventManager
+                            )
                         }) {
                             Text("useProfile")
                                 .font(.system(size: 11))
@@ -422,7 +458,13 @@ struct ContentView: View {
                     Text("launchAtLogin")
                         .font(.system(size: 14))
                     Spacer()
-                    Toggle("", isOn: $launchAtLogin)
+                    Toggle(
+                        "",
+                        isOn: Binding(
+                            get: { launchAtLogin },
+                            set: updateLaunchAtLogin
+                        )
+                    )
                         .labelsHidden()
                         .toggleStyle(.switch)
                 }
@@ -447,8 +489,8 @@ struct ContentView: View {
                     Toggle("", isOn: $autoCheckUpdates)
                         .labelsHidden()
                         .toggleStyle(.switch)
-                        .onChange(of: autoCheckUpdates) { newValue in
-                             updateManager.autoCheckUpdates = newValue
+                        .onChange(of: autoCheckUpdates) { _, newValue in
+                            updateManager.autoCheckUpdates = newValue
                         }
                 }
                 
@@ -473,6 +515,66 @@ struct ContentView: View {
         .padding(16)
     }
     
+    var inputMonitoringBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.shield.fill")
+                .foregroundStyle(.orange)
+            Text(Localizer.get("Input Monitoring is required for the M720 gesture button."))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            Button(Localizer.get("Enable")) {
+                if !driver.requestInputMonitoringPermission() {
+                    openInputMonitoringSettings()
+                }
+            }
+            .font(.system(size: 10, weight: .semibold))
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(8)
+        .background(Color.orange.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    var gestureControlFailureBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text(Localizer.get("M720 gesture button could not be initialized."))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+            Button(Localizer.get("Retry")) {
+                driver.retryGestureControl()
+            }
+            .font(.system(size: 10, weight: .semibold))
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .padding(8)
+        .background(Color.orange.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
+    var gestureControlReadyBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: driver.hasDetectedGestureButton ? "checkmark.circle.fill" : "shield.checkered")
+                .foregroundStyle(.green)
+            Text(Localizer.get(
+                driver.hasDetectedGestureButton
+                    ? "M720 gesture button detected."
+                    : "M720 gesture button is ready."
+            ))
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 4)
+        }
+        .padding(8)
+        .background(Color.green.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+
     // MARK: - Connection Dot
     
     @ViewBuilder
@@ -512,20 +614,39 @@ struct ContentView: View {
     // MARK: - Actions
     
     private func saveAndSync() {
-        if let index = profileManager.profiles.firstIndex(where: { $0.id == profileManager.activeProfileID }) {
-            var newMappings = [Int: String]()
-            for (btn, action) in eventManager.buttonMappings {
-                newMappings[btn.rawValue] = action.rawValue
-            }
-            profileManager.profiles[index].mappings = newMappings
-        }
-        profileManager.deviceProfiles[selectedMouse] = profileManager.activeProfileID
-        profileManager.save()
+        let didSave = profileManager.saveMappings(
+            eventManager.buttonMappings,
+            for: selectedDeviceProfileKey
+        )
+        guard didSave else { return }
         driver.requestBatteryStatus()
         
         withAnimation(.spring()) { showSaveToast = true }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             withAnimation { showSaveToast = false }
+        }
+    }
+
+    private func updateLaunchAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+            if enabled && !launchAtLogin {
+                settingsErrorMessage = Localizer.get("Allow Whisker in System Settings > General > Login Items.")
+            }
+        } catch {
+            launchAtLogin = SMAppService.mainApp.status == .enabled
+            settingsErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func openInputMonitoringSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
+            NSWorkspace.shared.open(url)
         }
     }
     
@@ -538,6 +659,7 @@ struct ContentView: View {
 
 struct OnboardingView: View {
     @ObservedObject var eventManager: EventTapManager
+    @ObservedObject var driver: HIDDriver
     
     var body: some View {
         VStack(spacing: 18) {
@@ -605,6 +727,8 @@ struct OnboardingView: View {
             
             Button("checkPermissionBtn") {
                 eventManager.checkAccessibilityPermission()
+                driver.gestureActionsEnabled = eventManager.hasAccessibilityPermission
+                driver.refreshInputMonitoringPermission()
                 if eventManager.hasAccessibilityPermission { eventManager.start() }
             }
             .font(.caption)
@@ -627,11 +751,13 @@ struct OnboardingView: View {
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             eventManager.checkAccessibilityPermission()
+            driver.gestureActionsEnabled = eventManager.hasAccessibilityPermission
             if eventManager.hasAccessibilityPermission { eventManager.start() }
         }
     }
     
     private func openInputMonitoringSettings() {
+        driver.requestInputMonitoringPermission()
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent") {
             NSWorkspace.shared.open(url)
         }

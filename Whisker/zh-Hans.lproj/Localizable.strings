@@ -129,3 +129,11 @@
 "Update Failed" = "更新失败";
 "OK" = "好";
 "via Receiver" = "通过接收器";
+"Settings Update Failed" = "设置更新失败";
+"Input Monitoring is required for the M720 gesture button." = "M720 拇指手势键需要开启输入监控权限。";
+"Enable" = "去开启";
+"Allow Whisker in System Settings > General > Login Items." = "请在“系统设置 > 通用 > 登录项”中允许 Whisker。";
+"M720 gesture button could not be initialized." = "M720 拇指手势键初始化失败。";
+"Retry" = "重试";
+"M720 gesture button is ready." = "M720 手势键已就绪";
+"M720 gesture button detected." = "已检测到 M720 手势键";

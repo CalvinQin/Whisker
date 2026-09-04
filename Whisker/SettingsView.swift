@@ -2,8 +2,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var profileManager: ProfileManager
+    @ObservedObject var eventManager: EventTapManager
+    let deviceName: String
     @Environment(\.dismiss) var dismiss
-    @Binding var appLanguage: String
     
     var body: some View {
         VStack(spacing: 0) {
@@ -13,9 +14,10 @@ struct SettingsView: View {
                     .font(.title3.bold())
                 Spacer()
                 Button(action: {
-                    let newProfile = MouseProfile(name: "Profile \(profileManager.profiles.count + 1)", mappings: [:])
-                    profileManager.profiles.append(newProfile)
-                    profileManager.save()
+                    profileManager.addProfile(
+                        name: "Profile \(profileManager.profiles.count + 1)",
+                        copying: eventManager.buttonMappings
+                    )
                 }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
@@ -29,18 +31,11 @@ struct SettingsView: View {
             
             // Profile List
             List {
-                ForEach($profileManager.profiles) { $profile in
+                ForEach(profileManager.profiles) { profile in
                     HStack(spacing: 10) {
                         if profileManager.profiles.count > 1 {
                             Button(action: {
-                                if let idx = profileManager.profiles.firstIndex(where: { $0.id == profile.id }) {
-                                    let wasActive = profile.id == profileManager.activeProfileID
-                                    profileManager.profiles.remove(at: idx)
-                                    if wasActive {
-                                        profileManager.activeProfileID = profileManager.profiles.first?.id
-                                    }
-                                    profileManager.save()
-                                }
+                                profileManager.deleteProfile(profile.id, eventManager: eventManager)
                             }) {
                                 Image(systemName: "minus.circle.fill")
                                     .foregroundColor(.red)
@@ -48,11 +43,17 @@ struct SettingsView: View {
                             .buttonStyle(.plain)
                         }
                         
-                        TextField("name", text: $profile.name)
+                        TextField(
+                            "name",
+                            text: Binding(
+                                get: {
+                                    profileManager.profiles.first(where: { $0.id == profile.id })?.name
+                                        ?? profile.name
+                                },
+                                set: { profileManager.renameProfile(profile.id, to: $0) }
+                            )
+                        )
                             .textFieldStyle(.plain)
-                            .onChange(of: profile.name) { _ in
-                                profileManager.save()
-                            }
                         
                         Spacer()
                         
@@ -61,8 +62,11 @@ struct SettingsView: View {
                                 .foregroundStyle(.cyan)
                         } else {
                             Button("useProfile") {
-                                profileManager.activeProfileID = profile.id
-                                profileManager.save()
+                                profileManager.selectProfile(
+                                    profile.id,
+                                    for: deviceName,
+                                    eventManager: eventManager
+                                )
                             }
                             .buttonStyle(.plain)
                             .font(.caption)

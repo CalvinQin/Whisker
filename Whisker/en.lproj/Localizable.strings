@@ -127,3 +127,11 @@
 "Update Failed" = "Update Failed";
 "OK" = "OK";
 "via Receiver" = "via Receiver";
+"Settings Update Failed" = "Settings Update Failed";
+"Input Monitoring is required for the M720 gesture button." = "Input Monitoring is required for the M720 gesture button.";
+"Enable" = "Enable";
+"Allow Whisker in System Settings > General > Login Items." = "Allow Whisker in System Settings > General > Login Items.";
+"M720 gesture button could not be initialized." = "M720 gesture button could not be initialized.";
+"Retry" = "Retry";
+"M720 gesture button is ready." = "M720 gesture button is ready.";
+"M720 gesture button detected." = "M720 gesture button detected.";

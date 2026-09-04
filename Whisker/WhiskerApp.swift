@@ -1,23 +1,72 @@
 import SwiftUI
 
-class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        if UserDefaults.standard.bool(forKey: "hideDockIcon") {
-            NSApp.setActivationPolicy(.accessory)
+enum DockIconController {
+    static func apply(hidden: Bool, activateWhenShown: Bool = false) {
+        NSApp.setActivationPolicy(hidden ? .accessory : .regular)
+        if !hidden && activateWhenShown {
+            NSApp.activate(ignoringOtherApps: true)
         }
+    }
+}
+
+class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        DockIconController.apply(hidden: UserDefaults.standard.bool(forKey: "hideDockIcon"))
+    }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let hidden = UserDefaults.standard.bool(forKey: "hideDockIcon")
+        DockIconController.apply(hidden: hidden)
+        DispatchQueue.main.async {
+            DockIconController.apply(hidden: hidden)
+        }
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        DockIconController.apply(hidden: UserDefaults.standard.bool(forKey: "hideDockIcon"))
     }
 }
 
 @main
 struct WhiskerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var driver = HIDDriver()
-    @StateObject private var eventManager = EventTapManager()
-    @StateObject private var profileManager = ProfileManager()
-    @StateObject private var updateManager = UpdateManager()
+    @StateObject private var driver: HIDDriver
+    @StateObject private var eventManager: EventTapManager
+    @StateObject private var profileManager: ProfileManager
+    @StateObject private var updateManager: UpdateManager
     
     @AppStorage("AppLanguage") private var appLanguage = "system"
-    @State private var isWindowVisible = true
+    init() {
+        let profileManager = ProfileManager()
+        let eventManager = EventTapManager()
+        let driver = HIDDriver()
+        let updateManager = UpdateManager()
+
+        driver.gestureActionsEnabled = eventManager.hasAccessibilityPermission
+        profileManager.restoreLastProfile(eventManager: eventManager)
+        driver.targetDeviceName = ProfileManager.hidMatchTerm(for: profileManager.lastSelectedDevice)
+        driver.rawButtonHandler = { [weak eventManager] button, isDown in
+            eventManager?.handleRawButtonEvent(button, isDown: isDown)
+        }
+        driver.primaryDeviceHandler = { [weak profileManager, weak eventManager] deviceName in
+            guard ProfileManager.isRecognizedDevice(deviceName),
+                  let profileManager,
+                  let eventManager else { return }
+            profileManager.applyProfile(for: deviceName, eventManager: eventManager)
+        }
+        eventManager.mappingChangeHandler = { [weak profileManager] mappings in
+            profileManager?.saveMappings(mappings)
+        }
+
+        _driver = StateObject(wrappedValue: driver)
+        _eventManager = StateObject(wrappedValue: eventManager)
+        _profileManager = StateObject(wrappedValue: profileManager)
+        _updateManager = StateObject(wrappedValue: updateManager)
+
+        DispatchQueue.main.async {
+            eventManager.start()
+        }
+    }
 
     var body: some Scene {
         WindowGroup(id: "main-window") {
@@ -38,7 +87,7 @@ struct WhiskerApp: App {
             HStack(spacing: 4) {
                 Image(systemName: "computermouse.fill")
                 if driver.isConnected {
-                    Text("\(driver.batteryLevel)%")
+                    Text(driver.batteryLevel > 0 ? "\(driver.batteryLevel)%" : "--%")
                         .font(.system(size: 11, design: .monospaced))
                 }
             }
@@ -81,8 +130,8 @@ struct WhiskerMenu: View {
                 Text("\(Localizer.get("Connection:")) \(Localizer.get(driver.connectionType.rawValue))")
                     .foregroundColor(.secondary)
                 
-                Text("\(Localizer.get("Battery:")) \(driver.batteryLevel)%")
-                    .foregroundColor(driver.batteryLevel > 20 ? .primary : .red)
+                Text("\(Localizer.get("Battery:")) \(driver.batteryLevel > 0 ? "\(driver.batteryLevel)%" : "--%")")
+                    .foregroundColor(driver.batteryLevel == 0 || driver.batteryLevel > 20 ? .primary : .red)
             }
             
             Divider()
@@ -90,9 +139,10 @@ struct WhiskerMenu: View {
             Menu(Localizer.get("Quick Profiles")) {
                 ForEach(profileManager.profiles) { profile in
                     Button(action: {
-                        let target = driver.targetDeviceName.isEmpty ? driver.deviceName : driver.targetDeviceName
-                        profileManager.deviceProfiles[target] = profile.id
-                        profileManager.applyProfile(for: target, eventManager: eventManager)
+                        let target = ProfileManager.isRecognizedDevice(driver.deviceName)
+                            ? driver.deviceName
+                            : profileManager.lastSelectedDevice
+                        profileManager.selectProfile(profile.id, for: target, eventManager: eventManager)
                     }) {
                         HStack {
                             Text(profile.name)
